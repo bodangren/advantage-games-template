@@ -502,9 +502,6 @@ export function createGameScene(
       const h = this.scale.height;
       const gs = this.gameState;
 
-      if (this.upgradeBg) this.upgradeBg.destroy();
-      this.upgradeBg = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.8).setDepth(50);
-
       const title = this.add.text(0, -h * 0.3, "Choose Upgrade", {
         fontFamily: "Arial, sans-serif", fontSize: "20px", color: "#ffffff",
       }).setOrigin(0.5);
