@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@reading-advantage/game-contracts": ["./packages/game-contracts/src/index.ts"],
+      "@reading-advantage/advantage-play-kit": ["./packages/advantage-play-kit/src/index.ts"],
+      "@reading-advantage/game-cartridges": ["./packages/game-cartridges/src/index.ts"]
+    }
+  },
+  "include": [
+    "apps/game-lab/src/**/*.ts",
+    "apps/game-lab/src/**/*.tsx",
+    "apps/game-lab/vite.config.ts",
+    "packages/game-contracts/src/index.ts",
+    "packages/advantage-play-kit/src/index.ts",
+    "packages/game-cartridges/src/index.ts",
+    "packages/game-cartridges/src/cartridges/my-game/**/*.ts"
+  ]
+}

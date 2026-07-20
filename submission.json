@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "advantage-game-submission.v1",
+  "cartridgeId": "contestant.my-game",
+  "cartridgePath": "packages/game-cartridges/src/cartridges/my-game",
+  "inputMode": "vocabulary",
+  "runtimeApiVersion": "1.0.0"
+}
