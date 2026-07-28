@@ -5,7 +5,18 @@ import { mountCartridge, primaryChibiEdition, secondaryEpicEdition, type APKGame
 import { myGameCartridge } from "@reading-advantage/game-cartridges";
 import "./styles.css";
 
-const input = [{ term: "courage", translation: "ความกล้าหาญ" }, { term: "journey", translation: "การเดินทาง" }, { term: "protect", translation: "ปกป้อง" }];
+const input = [
+  { term: "DOCTOR", translation: "บุคคลสวมชุดขาว ทำงานตรวจรักษาผู้ป่วยในโรงพยาบาล" },
+  { term: "POLICE", translation: "ผู้พิทักษ์สันติราษฎร์ สวมเครื่องแบบ คอยจับผู้ร้ายและจัดระเบียบเมือง" },
+  { term: "HAPPY", translation: "อารมณ์สดใส ยิ้มกว้าง มีความสุขเมื่อได้ทำสิ่งที่ชอบ" },
+  { term: "TIRED", translation: "ความรู้สึกอยากหลับตาพักผ่อนหลังเล่นกีฬาหรือทำงานมาเหนื่อยๆ" },
+  { term: "CLOUD", translation: "กลุ่มก้อนปุยขาวลอยอยู่บนท้องฟ้า ยามฝนตกจะเปลี่ยนเป็นสีเทาเข้ม" },
+  { term: "RIVER", translation: "สายน้ำยาวไหลผ่านหุบเขาและหมู่บ้าน เป็นที่อยู่อาศัยของปลา" },
+  { term: "BUTTERFLY", translation: "แมลงปีกสวยงาม คอยบินตอมดมเกสรดอกไม้ตามสวนธรรมชาติ" },
+  { term: "AIRPLANE", translation: "พาหนะบินได้ขนาดใหญ่พานักท่องเที่ยวข้ามทวีปผ่านกลีบเมฆ" },
+  { term: "SUNNY", translation: "อากาศร้อนจัด มีแดดแรง ท้องฟ้าเปิดแจ่มใส เหมาะแก่การไปทะเล" },
+  { term: "PLAYGROUND", translation: "สถานที่กว้างขวาง เต็มไปด้วยเครื่องเล่นสนุกๆ และสายไหมหวานฉ่ำ" },
+];
 function App() {
   const host = useRef<HTMLDivElement>(null); const handle = useRef<APKGameHandle | undefined>(undefined);
   const [wide, setWide] = useState(false); const [epic, setEpic] = useState(false); const [result, setResult] = useState<GameResults>(); const [event, setEvent] = useState("Mounting...");
