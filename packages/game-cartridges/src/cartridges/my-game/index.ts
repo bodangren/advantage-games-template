@@ -1,2 +1,1 @@
-/** Public starter cartridge export. */
-export { myGameCartridge } from "./definition";
+export { spelllabCartridge } from "./definition";

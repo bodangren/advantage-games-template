@@ -1,41 +1,32 @@
-import Phaser from 'phaser';
+import Phaser from "phaser";
 
+/** Global event bus for SpellLab Potion Master. */
 export const EventBus = new Phaser.Events.EventEmitter();
 
+/** All game events. */
 export const Events = {
-    PLAYER_DAMAGED: 'player:damaged',
-    PLAYER_DIED: 'player:died',
-    PLAYER_HEALED: 'player:healed',
-    PLAYER_LEVEL_UP: 'player:levelup',
-
-    ENEMY_KILLED: 'enemy:killed',
-    ENEMY_SPAWNED: 'enemy:spawned',
-
-    WEAPON_FIRED: 'weapon:fired',
-    WEAPON_UPGRADED: 'weapon:upgraded',
-
-    XP_COLLECTED: 'xp:collected',
-    XP_MAGNET: 'xp:magnet',
-
-    SKILL_CHOSEN: 'skill:chosen',
-
-    GAME_OVER: 'game:over',
-    GAME_RESTART: 'game:restart',
-    GAME_PAUSE: 'game:pause',
-    GAME_RESUME: 'game:resume',
-
-    TYPING_STARTED: 'typing:started',
-    TYPING_CORRECT_CHAR: 'typing:correct',
-    TYPING_WRONG_CHAR: 'typing:wrong',
-    TYPING_WORD_COMPLETE: 'typing:complete',
-    TYPING_TARGET_SWITCHED: 'typing:target',
-    TYPING_STREAK: 'typing:streak',
-
-    DIAMOND_COLLECTED: 'diamond:collected',
-
-    SPECTACLE_ENTRANCE: 'spectacle:entrance',
-    SPECTACLE_ACTION: 'spectacle:action',
-    SPECTACLE_HIT: 'spectacle:hit',
-    SPECTACLE_COMBO: 'spectacle:combo',
-    SPECTACLE_STREAK: 'spectacle:streak',
+  /** A bottle was tapped or dragged to the cauldron. */
+  BOTTLE_POUR: "bottle:pour",
+  /** The poured letter was correct. */
+  LETTER_CORRECT: "letter:correct",
+  /** The poured letter was wrong. */
+  LETTER_WRONG: "letter:wrong",
+  /** Current word was completed successfully. */
+  WORD_COMPLETE: "word:complete",
+  /** Current word failed (wrong letter). */
+  WORD_FAIL: "word:fail",
+  /** A batch of 5 words is done — show review. */
+  BATCH_COMPLETE: "batch:complete",
+  /** Review card dismissed — continue to next batch or end. */
+  REVIEW_DISMISSED: "review:dismissed",
+  /** All 10 words done — show game over. */
+  GAME_COMPLETE: "game:complete",
+  /** Star toggled on a word. */
+  STAR_TOGGLE: "star:toggle",
+  /** Player requests help screen. */
+  HELP_REQUEST: "help:request",
+  /** Help screen dismissed. */
+  HELP_DISMISSED: "help:dismissed",
+  /** Game restart requested. */
+  GAME_RESTART: "game:restart",
 } as const;

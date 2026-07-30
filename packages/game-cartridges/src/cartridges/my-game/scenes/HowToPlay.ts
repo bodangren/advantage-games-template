@@ -1,197 +1,105 @@
-import Phaser from 'phaser';
-import { GAME, PALETTE, UI } from '../core/Constants';
+import Phaser from "phaser";
+import { COLORS, UI } from "../core/Constants";
+import type { CartridgeGameConfigContext } from "@reading-advantage/advantage-play-kit";
 
+/** How to Play overlay — shown on first play or from help button. */
 export class HowToPlay extends Phaser.Scene {
-    constructor() { super('HowToPlay'); }
+  private context!: CartridgeGameConfigContext;
+  private fromGame = false;
 
-    create() {
-        const cx = GAME.WIDTH / 2;
+  constructor() {
+    super("HowToPlay");
+  }
 
-        this.add.rectangle(cx, GAME.HEIGHT / 2, GAME.WIDTH, GAME.HEIGHT, 0x0a0a1a);
+  init(data?: { contestContext?: CartridgeGameConfigContext; fromGame?: boolean }): void {
+    this.context = data?.contestContext ?? ({} as CartridgeGameConfigContext);
+    this.fromGame = data?.fromGame ?? false;
+  }
 
-        this.add.text(cx, 25, 'HOW TO PLAY', {
-            fontSize: '28px',
-            fontFamily: UI.FONT_FAMILY,
-            color: '#ffffff',
-            fontStyle: 'bold',
-        }).setOrigin(0.5);
+  create(): void {
+    // Mark as seen
+    localStorage.setItem("spelllab-seen-howtoplay", "true");
 
-        this.createControlsBox(55);
-        this.createGameplayBox(195);
-        this.createEnemyBox(345);
-        this.createVocabularyBox(470);
+    const cx = this.scale.width / 2;
+    const cy = this.scale.height / 2;
+    const h = this.scale.height;
 
-        this.createButton(cx, GAME.HEIGHT - 30, '← BACK', () => {
-            this.scene.start('Title');
-        });
-    }
+    // Semi-transparent backdrop
+    const backdrop = this.add.rectangle(cx, cy, this.scale.width, this.scale.height, 0x000000, 0.7);
+    backdrop.setInteractive();
 
-    private createControlsBox(y: number) {
-        const x = 20;
-        const w = GAME.WIDTH - 40;
-        const h = 130;
+    // Card background — fit to screen height
+    const cardW = 380;
+    const cardH = Math.min(440, h - 60);
+    const cardTop = cy - cardH / 2;
 
-        this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x111133, 0.9)
-            .setStrokeStyle(1, 0x44aaff);
+    const card = this.add.graphics();
+    card.fillStyle(COLORS.BG_CARD, 0.95);
+    card.fillRoundedRect(cx - cardW / 2, cardTop, cardW, cardH, 16);
+    card.lineStyle(2, COLORS.GLOW_PURPLE, 0.4);
+    card.strokeRoundedRect(cx - cardW / 2, cardTop, cardW, cardH, 16);
 
-        this.add.text(x + 15, y + 8, '🎮 CONTROLS', {
-            fontSize: '18px',
-            fontFamily: UI.FONT_FAMILY,
-            color: '#44aaff',
-            fontStyle: 'bold',
-        });
+    // Title
+    this.add.text(cx, cardTop + 30, "How to Play", {
+      fontSize: "24px",
+      fontFamily: UI.FONT_TITLE,
+      color: COLORS.TEXT_PRIMARY,
+      fontStyle: "bold",
+    }).setOrigin(0.5);
 
-        const controls = [
-            'WASD / Arrow Keys = Move player',
-            'Type A-Z letters = Attack jellyfish',
-            'Click on enemy = Switch typing target',
-            'Space bar / ⏸ button = Pause game',
-        ];
+    // Instructions
+    const instructions = [
+      { icon: "\u{1F9EA}", text: "See the target word at the top" },
+      { icon: "\u{1F4E6}", text: "Each bottle has letters on it" },
+      { icon: "\u{1F4A8}", text: "Drag a bottle to the cauldron or tap to pour" },
+      { icon: "\u2705", text: "Pour letters in the correct spelling order" },
+      { icon: "\u{1F4A5}", text: "Wrong letter? Cauldron shakes! Word restarts." },
+      { icon: "\u2B50", text: "Star words you want to remember" },
+      { icon: "\u{1F3AF}", text: "Spell all 10 words to finish!" },
+    ];
 
-        controls.forEach((text, i) => {
-            this.add.text(x + 20, y + 32 + i * 22, `• ${text}`, {
-                fontSize: '14px',
-                fontFamily: UI.FONT_FAMILY,
-                color: '#cccccc',
-            });
-        });
-    }
+    const contentH = cardH - 100; // Space for title + button
+    const spacing = Math.min(42, contentH / instructions.length);
+    const startY = cardTop + 60;
 
-    private createGameplayBox(y: number) {
-        const x = 20;
-        const w = GAME.WIDTH - 40;
-        const h = 140;
+    instructions.forEach((item, i) => {
+      const y = startY + i * spacing;
+      this.add.text(cx - cardW / 2 + 25, y, item.icon, {
+        fontSize: "18px",
+      });
+      this.add.text(cx - cardW / 2 + 55, y + 1, item.text, {
+        fontSize: "13px",
+        fontFamily: UI.FONT_BODY,
+        color: COLORS.TEXT_PRIMARY,
+      });
+    });
 
-        this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x111133, 0.9)
-            .setStrokeStyle(1, 0x44ff44);
+    // Close button
+    const btnY = cardTop + cardH - 35;
+    const btnBg = this.add.graphics();
+    btnBg.fillStyle(COLORS.GLOW_GREEN, 0.2);
+    btnBg.fillRoundedRect(cx - 70, btnY - 16, 140, 32, 8);
+    btnBg.lineStyle(2, COLORS.GLOW_GREEN, 0.6);
+    btnBg.strokeRoundedRect(cx - 70, btnY - 16, 140, 32, 8);
 
-        this.add.text(x + 15, y + 8, '⚔️ GAMEPLAY', {
-            fontSize: '18px',
-            fontFamily: UI.FONT_FAMILY,
-            color: '#44ff44',
-            fontStyle: 'bold',
-        });
+    const btnText = this.add.text(cx, btnY, "Got it!", {
+      fontSize: "16px",
+      fontFamily: UI.FONT_BODY,
+      color: COLORS.TEXT_PRIMARY,
+      fontStyle: "bold",
+    });
+    btnText.setOrigin(0.5);
 
-        const items = [
-            'Type the word on a jellyfish to attack it',
-            'Auto-weapons fire at Blue & Purple enemies',
-            'Collect XP gems from defeated enemies',
-            'Every 10 kills = Diamond item drops',
-            'Diamond clears ALL enemies for 10 seconds!',
-        ];
+    const btnHit = this.add.rectangle(cx, btnY, 140, 32, 0xffffff, 0);
+    btnHit.setInteractive({ useHandCursor: true });
 
-        items.forEach((text, i) => {
-            this.add.text(x + 20, y + 32 + i * 20, `• ${text}`, {
-                fontSize: '13px',
-                fontFamily: UI.FONT_FAMILY,
-                color: '#cccccc',
-            });
-        });
-    }
-
-    private createEnemyBox(y: number) {
-        const x = 20;
-        const w = GAME.WIDTH - 40;
-        const h = 115;
-
-        this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x111133, 0.9)
-            .setStrokeStyle(1, 0xff6699);
-
-        this.add.text(x + 15, y + 8, '🪼 ENEMY TYPES', {
-            fontSize: '18px',
-            fontFamily: UI.FONT_FAMILY,
-            color: '#ff6699',
-            fontStyle: 'bold',
-        });
-
-        const enemies = [
-            { color: 0x00ff99, label: 'Green', desc: 'Fast, weak (1.0x speed)' },
-            { color: 0xff6699, label: 'Pink', desc: 'Normal (0.8x speed)' },
-            { color: 0x0066ff, label: 'Blue', desc: 'Tank, tough (0.6x speed)' },
-            { color: 0x9900ff, label: 'Purple', desc: 'Elite, strongest (0.4x speed)' },
-        ];
-
-        enemies.forEach((e, i) => {
-            const ey = y + 32 + i * 20;
-            this.add.circle(x + 28, ey + 2, 6, e.color);
-            this.add.text(x + 42, ey, `${e.label} = ${e.desc}`, {
-                fontSize: '13px',
-                fontFamily: UI.FONT_FAMILY,
-                color: '#cccccc',
-            });
-        });
-    }
-
-    private createVocabularyBox(y: number) {
-        const x = 20;
-        const w = GAME.WIDTH - 40;
-        const h = 110;
-
-        this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x111133, 0.9)
-            .setStrokeStyle(1, 0xffff44);
-
-        this.add.text(x + 15, y + 8, '📚 VOCABULARY SETS (changes every 5 levels)', {
-            fontSize: '16px',
-            fontFamily: UI.FONT_FAMILY,
-            color: '#ffff44',
-            fontStyle: 'bold',
-        });
-
-        const sets = [
-            'Lv 1-4: Basic (animals, colors, body)',
-            'Lv 5-9: Daily Life (food, home, school)',
-            'Lv 10-14: Nature & Actions (weather, verbs)',
-            'Lv 15-19: Advanced (emotions, abstract)',
-            'Lv 20-24: Expert (academic, complex)',
-            'Lv 25+: Master (professional, rare)',
-        ];
-
-        sets.forEach((text, i) => {
-            this.add.text(x + 20, y + 30 + i * 13, `• ${text}`, {
-                fontSize: '12px',
-                fontFamily: UI.FONT_FAMILY,
-                color: '#cccccc',
-            });
-        });
-    }
-
-    private createButton(x: number, y: number, label: string, callback: () => void) {
-        const container = this.add.container(x, y);
-
-        const bg = this.add.rectangle(0, 0, 180, 40, 0x444466, 0.9);
-        bg.setStrokeStyle(1, 0x666688);
-        container.add(bg);
-
-        const text = this.add.text(0, 0, label, {
-            fontSize: '18px',
-            fontFamily: UI.FONT_FAMILY,
-            color: '#ffffff',
-            fontStyle: 'bold',
-        }).setOrigin(0.5);
-        container.add(text);
-
-        bg.setInteractive({ useHandCursor: true });
-
-        bg.on('pointerover', () => {
-            this.tweens.add({
-                targets: container,
-                scaleX: 1.05,
-                scaleY: 1.05,
-                duration: 100,
-            });
-            bg.setFillStyle(0x555577, 1);
-        });
-
-        bg.on('pointerout', () => {
-            this.tweens.add({
-                targets: container,
-                scaleX: 1,
-                scaleY: 1,
-                duration: 100,
-            });
-            bg.setFillStyle(0x444466, 0.9);
-        });
-
-        bg.on('pointerdown', callback);
-    }
+    btnHit.on("pointerdown", () => {
+      if (this.fromGame) {
+        this.scene.resume("Game");
+        this.scene.stop();
+      } else {
+        this.scene.start("Game", { contestContext: this.context });
+      }
+    });
+  }
 }

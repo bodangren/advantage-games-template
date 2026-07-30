@@ -1,2 +1,2 @@
 /** Contest cartridge catalog. */
-export { myGameCartridge } from "./cartridges/my-game";
+export { spelllabCartridge as myGameCartridge } from "./cartridges/my-game";
