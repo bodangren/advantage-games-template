@@ -15,6 +15,8 @@ Compact layouts should favor vertical flow, safe edge padding, large touch targe
 
 Keep primary touch targets at least 48 CSS pixels in the exact preview. Keep important content inside a safe margin. Recalculate wrapping widths and positions when the Phaser scale emits a resize event.
 
+Use the forest, clouds, terrain, and bonus roles as composable layers. Keep the educational prompt and answer controls visibly separate from decorative or moving palette assets at both review sizes.
+
 ## Inputs
 
 Every action must be available by pointer/touch and keyboard. The starter maps `1` and `2` to its two choices. Pointer handlers belong on Phaser game objects, not React overlays.
@@ -25,4 +27,4 @@ Thai and English must use a system font stack that contains readable fallbacks. 
 
 ## Editions
 
-Read semantic colors from `context.edition.tuning.semantic`. Values such as `canvas`, `surface`, `primary`, `text`, `correct`, and `incorrect` carry meaning independent of an edition name. Never branch gameplay on `primary-chibi` or `secondary-epic`.
+Read colors from `context.edition.colors`. Values such as background, panel, accent, and text are development semantics independent of an edition name. Never branch gameplay on `primary-chibi` or `secondary-epic`.

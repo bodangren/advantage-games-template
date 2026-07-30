@@ -10,7 +10,7 @@
     "build": "vite build --config apps/game-lab/vite.config.ts",
     "check-types": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "vitest run packages/game-cartridges/src/cartridges/my-game/systems.test.ts",
+    "test": "vitest run packages/advantage-play-kit/src/competition-palette.test.ts packages/game-cartridges/src/cartridges/my-game/systems.test.ts",
     "validate:submission": "node scripts/validate-submission.mjs",
     "validate:import": "node scripts/validate-import.mjs",
     "validate": "pnpm validate:submission && pnpm check-types && pnpm test && pnpm build && pnpm validate:import"

@@ -6,8 +6,8 @@ This repository is an LLM-first competition workspace. Build one import-ready Ph
 
 When the contestant asks for the rules or what to do first:
 
-1. Read this file and `docs/COMPETITION_RULES.md`, `docs/GAME_CONTRACT.md`, and `docs/JUDGING.md`.
-2. Explain the mission, the 100-point scoring rubric, immutable contracts, editable paths, and `pnpm validate`.
+1. Read this file and `docs/COMPETITION_RULES.md`, `docs/COMPETITION_PALETTE.md`, `docs/GAME_CONTRACT.md`, and `docs/JUDGING.md`.
+2. Explain the mission, the 100-point scoring rubric, frozen palette, immutable contracts, editable paths, and `pnpm validate`.
 3. Ask for the game concept, repeated player action, learning loop, correct/incorrect consequences, and win condition.
 4. Do not edit code until that short concept discussion is complete.
 
@@ -19,7 +19,7 @@ Contestants and agents may edit only:
 - `apps/game-lab/public/assets/cartridges/my-game/**`
 - `submission.json`
 
-Everything else is protected competition infrastructure. Never weaken or modify contracts, runtime code, the host, validators, tests, CI, or lockfiles to make a submission pass.
+Everything else is protected competition infrastructure. Never weaken or modify contracts, runtime code, the host, palette resolver, validators, tests, CI, or lockfiles to make a submission pass.
 
 ## Production Shape
 
@@ -56,6 +56,12 @@ Completion must call `context.complete()` exactly once with:
 
 Identity, persistence, tenancy, and authoritative XP belong to the education app host, never the cartridge.
 
+## Frozen Competition Palette
+
+Use only the Crystal Courier roles in `docs/COMPETITION_PALETTE.md`. Obtain every descriptor through `context.assets.resolve(role)`, then use its URL and frame metadata with Phaser. Never hard-code asset paths, URLs, source filenames, frame dimensions, or remote art links.
+
+Declare the exact stable roles your game uses in `manifest.requiredAssetBindings`. The organizer requires the visible credit **Pixel art assets by ElvGames**. The supplied starter is a suggested concept; teams may change the mechanic while preserving the contracts and palette rules.
+
 ## Mandatory Engineering Rules
 
 - Use Phaser 4 and canvas-first gameplay. Host controls may use DOM outside the canvas.
@@ -63,7 +69,7 @@ Identity, persistence, tenancy, and authoritative XP belong to the education app
 - Provide touch/pointer and keyboard-equivalent controls.
 - Keep Thai and English prompts complete, legible, wrapped, and untruncated.
 - Use edition semantics; do not branch gameplay by product or hard-code production asset paths.
-- Use supplied lifecycle, input, diagnostics, and completion APIs instead of recreating host infrastructure.
+- Use supplied lifecycle, input, palette, diagnostics, and completion APIs instead of recreating host infrastructure.
 - Tear down scenes, timers, listeners, audio, and Phaser instances.
 - Write tests before or alongside behavior. All exported functions, types, and interfaces need useful JSDoc.
 - Never report completion while a required check fails.
@@ -82,4 +88,4 @@ pnpm validate
 
 ## Definition Of Done
 
-The learning loop is fun and correct; both viewport profiles are composed intentionally; touch and keyboard work; both development editions render; valid results emit once; restart/unmount leaks nothing; tests and `pnpm validate` pass; and the three-minute demo works at both required sizes.
+The learning loop is fun and correct; both viewport profiles are composed intentionally; touch and keyboard work; both development editions render; only selected-union assets are resolved through the host; required credit is visible; valid results emit once; restart/unmount leaks nothing; tests and `pnpm validate` pass; and the three-minute demo works at both required sizes.
