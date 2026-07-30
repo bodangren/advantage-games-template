@@ -3,31 +3,35 @@ import {
   APK_RUNTIME_API_VERSION,
   type RuntimeCartridge,
 } from "@reading-advantage/advantage-play-kit";
-import { createStarterScene } from "./scene";
+import { createRunnerScene } from "./scene";
 
-const starterAssetBindings = [
+const runnerAssetBindings = [
+  "runner.idle",
   "runner.walk",
   "enemy.sentinel",
+  "enemy.scout",
   "environment.forest",
   "environment.clouds",
   "environment.terrain",
   "bonus.crystal-blue",
+  "bonus.crystal-green",
+  "bonus.crystal-yellow",
   "bonus.coin",
   "feedback.hit",
   "audio.feedback-hit",
 ] as const;
 
-/** Crystal Courier reference cartridge imported by the game lab and production hosts. */
+/** Vocabulary Runner - A 2.5D magical vocabulary game cartridge. */
 export const myGameCartridge: RuntimeCartridge = {
   manifest: {
     id: "contestant.my-game",
-    title: "Crystal Courier",
+    title: "Vocabulary Runner",
     description:
-      "A reference vocabulary game built from the frozen competition palette.",
+      "A 2.5D vocabulary runner where a witch chooses magical doors with correct translations.",
     version: "0.1.0",
     runtimeApiVersion: APK_RUNTIME_API_VERSION,
     inputMode: "vocabulary",
-    requiredAssetBindings: starterAssetBindings,
+    requiredAssetBindings: runnerAssetBindings,
     capabilities: ["keyboard", "pointer", "touch", "compact", "wide"],
   },
   createGameConfig(context) {
@@ -35,12 +39,12 @@ export const myGameCartridge: RuntimeCartridge = {
       type: Phaser.AUTO,
       width: 960,
       height: 640,
-      backgroundColor: context.edition.colors.background,
+      backgroundColor: "#1a0a2e",
       scale: {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
-      scene: [createStarterScene(context)],
+      scene: [createRunnerScene(context)],
     };
   },
 };
