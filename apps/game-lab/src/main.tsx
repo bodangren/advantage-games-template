@@ -5,7 +5,7 @@ import { mountCartridge, primaryChibiEdition, secondaryEpicEdition, type APKGame
 import { myGameCartridge } from "@reading-advantage/game-cartridges";
 import "./styles.css";
 
-const input = [{ term: "courage", translation: "ความกล้าหาญ" }, { term: "journey", translation: "การเดินทาง" }, { term: "protect", translation: "ปกป้อง" }];
+const input = [{ term: "The brave knight protects the village", translation: "อัศวินผู้กล้าหาญปกป้องหมู่บ้าน" }, { term: "She collects crystals in the dark cave", translation: "เธอเก็บคริสตัลในถ้ำมืด" }, { term: "We journey through the ancient maze together", translation: "เราเดินทางผ่านเขาวงกตโบราณด้วยกัน" }];
 function App() {
   const host = useRef<HTMLDivElement>(null); const handle = useRef<APKGameHandle | undefined>(undefined);
   const [wide, setWide] = useState(false); const [epic, setEpic] = useState(false); const [result, setResult] = useState<GameResults>(); const [event, setEvent] = useState("Mounting...");

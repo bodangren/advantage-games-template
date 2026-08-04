@@ -25,8 +25,8 @@ Put the exact roles your game uses in `manifest.requiredAssetBindings`. Use no a
 | `player.hero-1` … `player.hero-6` | 32×32 sprite sheet, 6 frames, frameRate 10 | hero avatar; six visually distinct heroes, pick one |
 | `goblin.scout` | 32×32 sprite sheet, 6 frames, frameRate 8 | fast patrolling enemy |
 | `goblin.stalker` | 32×32 sprite sheet, 6 frames, frameRate 8 | tracking enemy |
-| `goblin.brute` | 32×32 sprite sheet, 6 frames, frameRate 8 | slow heavy enemy |
-| `goblin.warden` | 32×32 sprite sheet, 6 frames, frameRate 8 | sentry enemy |
+| `goblin.brute` | 48×48 sprite sheet, 6 frames, frameRate 8 | slow heavy enemy |
+| `goblin.warden` | 48×48 sprite sheet, 6 frames, frameRate 8 | sentry enemy |
 | `orb.crystal-blue` | 16×16 sprite sheet, 8 frames, frameRate 9 | word orb |
 | `orb.crystal-green` | 16×16 sprite sheet, 8 frames, frameRate 9 | word orb |
 | `orb.crystal-yellow` | 16×16 sprite sheet, 8 frames, frameRate 9 | word orb |
@@ -39,8 +39,8 @@ Put the exact roles your game uses in `manifest.requiredAssetBindings`. Use no a
 | `maze.wall-crypt` | 32×32 image | crypt walls |
 | `maze.floor-crypt` | 32×32 image | crypt floor |
 | `maze.gate` | 32×64 image | maze exit |
-| `maze.torch` | 16×16 sprite sheet, 3 frames | wall decor |
-| `feedback.hit` | 32×32 sprite sheet, 6 frames | goblin defeat effect |
+| `maze.torch` | 32×32 sprite sheet, 3 frames | wall decor |
+| `feedback.hit` | 32×32 sprite sheet, 24 frames | goblin defeat effect |
 | `audio.orb-pickup` | audio | orb collected |
 | `audio.wrong-orb` | audio | wrong orb collected |
 | `audio.power-up` | audio | Goblin Hunt power-up starts |

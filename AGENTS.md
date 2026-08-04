@@ -83,12 +83,24 @@ Cartridge code must not import Next.js, React, auth, databases, app aliases, Kon
 ## Commands
 
 ```bash
-pnpm dev
+pnpm dev                # game lab at http://localhost:5173 — buttons toggle 390x844/1440x900 and both editions
 pnpm test
 pnpm check-types
 pnpm validate:submission
 pnpm validate
 ```
+
+## Resolver Quickstart
+
+```ts
+// scene.ts preload(): resolve roles, then load with descriptor-owned metadata
+const hero = context.assets.resolve("player.hero-1");
+this.load.spritesheet("hero", hero.url, { frameWidth: hero.frame!.width, frameHeight: hero.frame!.height });
+const pickup = context.assets.resolve("audio.orb-pickup");
+this.load.audio("pickup", pickup.url);
+```
+
+Declare every resolved role in `manifest.requiredAssetBindings`. Never write a URL, path, or frame number yourself.
 
 ## Definition Of Done
 

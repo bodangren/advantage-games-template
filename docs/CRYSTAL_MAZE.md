@@ -72,8 +72,8 @@ All assets resolve through `context.assets.resolve(role)` and must be declared i
 | `maze.wall-dungeon`, `maze.floor-dungeon` | 32×32 images | dungeon theme |
 | `maze.wall-crypt`, `maze.floor-crypt` | 32×32 images | crypt theme |
 | `maze.gate` | 32×64 image | maze exit |
-| `maze.torch` | 16×16 spritesheet, 3 frames | wall decor |
-| `feedback.hit` | 32×32 spritesheet, 6 frames | goblin defeat effect |
+| `maze.torch` | 32×32 spritesheet, 3 frames | wall decor |
+| `feedback.hit` | 32×32 spritesheet, 24 frames | goblin defeat effect |
 | `audio.orb-pickup` | ogg | orb collected |
 | `audio.wrong-orb` | ogg | wrong orb collected |
 | `audio.power-up` | ogg | Goblin Hunt starts |
