@@ -4,14 +4,14 @@ Crystal Maze is the fixed Week 3 brief: a Pac-Man-style sentence game. The Thai 
 
 ## Learning loop
 
-- **Player verb:** steer the hero through maze corridors with WASD, arrow keys, or pointer/touch drag.
-- **Learning loop:** read the Thai sentence in the panel, find the one glowing orb carrying the next English word, collect it, watch the progress line fill a blank, repeat to the end of the sentence.
-- **Repeated action:** hunt the next glowing orb, dodge goblins, finish the sentence, ride the Goblin Hunt power-up, start the next sentence.
+- **Player verb:** steer the hero through maze corridors by **holding** WASD, arrow keys, or a pointer/touch drag. The hero moves only while a direction is held and halts the moment it is released.
+- **Learning loop:** read the Thai sentence in the panel, work out which English word comes next, drive to that orb, collect it, watch the progress line fill a blank, repeat to the end of the sentence.
+- **Repeated action:** decide the next word, drive to its orb, dodge goblins, finish the sentence, ride the Goblin Hunt power-up, start the next sentence.
 - **Readability:** the panel shows the full Thai sentence (wrapped, never truncated) above an English progress line — collected words are printed, uncollected words are blanks sized to the word. Every orb also carries its own word label.
 
 ## Rules implemented
 
-- **Order rule:** exactly one orb is the next correct word. It is yellow, pulses, and sits inside an accent-coloured glow ring; every other orb is dimmed to 45% alpha. Collecting any other orb plays `audio.wrong-orb`, shakes the camera, tints the hero red, and **stuns** the hero for 850 ms while scoring −25.
+- **Order rule:** exactly one orb is the next correct word, but it is **not** marked in the maze — every orb reads identically, so the learner must derive the order from the Thai prompt and the English progress line. Collecting an out-of-order orb plays `audio.wrong-orb`, shakes the camera, tints the hero red, and **stuns** the hero for 850 ms while scoring −25. A wrong orb re-arms only once the hero has driven clear, so resting on it cannot charge the same mistake twice.
 - **Power-up:** finishing a sentence in order opens the chest, plays `audio.sentence-complete` and `audio.power-up`, and grants **Goblin Hunt** for 6 s. Goblins turn blue, flee the hero at 60% speed, and can be defeated for +150 with `feedback.hit` and `audio.goblin-defeat`; they respawn at their home cell 2.6 s later. On expiry they resume chase and patrol.
 - **Lives:** 3. Goblin contact without the power-up costs a life, returns the hero to spawn, and grants 1.6 s of invulnerability. Zero lives ends the run.
 - **Difficulty ramp:** rounds are sorted by word count ascending, so any host sentence set plays as the brief's 3 → 7 word ramp. Goblins on the board scale with the round: 1 → 2 → 3 → 4 (scout patrols, stalker chases, brute chases slowly, warden patrols).
@@ -34,7 +34,7 @@ The maze is authored once as a 15 × 19 portrait template in `systems.ts`. The l
 
 ## Palette and credit
 
-Every asset is resolved through `context.assets.resolve(role)` and declared in `manifest.requiredAssetBindings`; no URL, path, filename, or frame geometry is written in cartridge code. Theme: **cavern**. Hero: `player.hero-3`. Orbs: yellow = next correct word, green = final word of the sentence, blue = later words.
+Every asset is resolved through `context.assets.resolve(role)` and declared in `manifest.requiredAssetBindings`; no URL, path, filename, or frame geometry is written in cartridge code. Theme: **cavern**. Hero: `player.hero-3`. The three orb colours cycle for visual variety only and never signal which word is next.
 
 Required visible credit is rendered in the prompt panel at all times:
 

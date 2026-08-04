@@ -108,6 +108,36 @@ describe("movement", () => {
     expect(along.dirCol).toBe(1);
   });
 
+  it("halts in place when no direction is held", () => {
+    const grid = parseMaze();
+    const moving = { col: 5.4, row: 9, dirCol: 1, dirRow: 0 };
+    const halted = stepMover(grid, moving, { dirCol: 0, dirRow: 0 }, 0.25);
+    expect(halted).toEqual({ col: 5.4, row: 9, dirCol: 0, dirRow: 0 });
+    expect(stepMover(grid, halted, { dirCol: 0, dirRow: 0 }, 0.25)).toEqual(halted);
+  });
+
+  it("resumes along the corridor from a mid-cell stop without snapping back", () => {
+    const grid = parseMaze();
+    const halted = { col: 5.4, row: 9, dirCol: 0, dirRow: 0 };
+    const resumed = stepMover(grid, halted, { dirCol: 1, dirRow: 0 }, 0.1);
+    expect(resumed.col).toBeCloseTo(5.5);
+    expect(resumed.dirCol).toBe(1);
+  });
+
+  it("buffers a crossing turn until the walker reaches a cell centre", () => {
+    const grid = parseMaze();
+    // Mid-cell on row 9 heading right; the turn up must wait for the centre.
+    let mover: ReturnType<typeof stepMover> = { col: 6.5, row: 9, dirCol: 1, dirRow: 0 };
+    const up = { dirCol: 0, dirRow: -1 };
+    mover = stepMover(grid, mover, up, 0.1);
+    expect(mover.dirRow).toBe(0);
+    expect(mover.col).toBeCloseTo(6.6);
+    for (let frame = 0; frame < 3; frame += 1) mover = stepMover(grid, mover, up, 0.1);
+    expect(mover.col).toBe(7);
+    expect(mover.dirRow).toBe(-1);
+    expect(canEnter(grid, 7, 8)).toBe(true);
+  });
+
   it("travels a corridor when each frame step is smaller than the turn window", () => {
     const grid = parseMaze();
     let mover = { col: 1, row: 9, dirCol: 0, dirRow: 0 };

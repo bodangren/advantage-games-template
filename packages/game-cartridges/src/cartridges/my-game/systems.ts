@@ -467,10 +467,20 @@ export function chooseGoblinDirection(
 }
 
 /**
- * Advances a walker along corridors, turning only where the maze allows.
+ * How close to a cell centre a walker must be before it may turn onto the
+ * crossing corridor. Turns requested earlier are buffered until it arrives.
+ */
+export const TURN_WINDOW = 0.26;
+
+/**
+ * Advances a walker along corridors for one frame.
+ *
+ * Movement is hold-to-move: an empty requested heading halts the walker where
+ * it stands. A heading across the current corridor is buffered until the walker
+ * is close enough to a cell centre to turn onto the grid.
  * @param grid Oriented maze grid.
  * @param mover Current position and heading.
- * @param want Heading the controller has requested.
+ * @param want Heading the controller is requesting this frame.
  * @param distance Cells to travel this frame.
  * @returns The walker's next position and heading.
  */
@@ -480,38 +490,35 @@ export function stepMover(
   want: Direction,
   distance: number,
 ): MoverState {
-  const centreCol = Math.round(mover.col);
-  const centreRow = Math.round(mover.row);
-  const aligned =
-    Math.abs(mover.col - centreCol) < 0.2 &&
-    Math.abs(mover.row - centreRow) < 0.2;
+  if (want.dirCol === 0 && want.dirRow === 0) {
+    return { col: mover.col, row: mover.row, dirCol: 0, dirRow: 0 };
+  }
 
-  let dirCol = mover.dirCol;
-  let dirRow = mover.dirRow;
   let col = mover.col;
   let row = mover.row;
+  let dirCol = mover.dirCol;
+  let dirRow = mover.dirRow;
 
-  if (aligned) {
-    const wants = want.dirCol !== 0 || want.dirRow !== 0;
-    const turning =
-      wants &&
-      (want.dirCol !== dirCol || want.dirRow !== dirRow) &&
-      canEnter(grid, centreCol + want.dirCol, centreRow + want.dirRow);
-    const blocked = !canEnter(grid, centreCol + dirCol, centreRow + dirRow);
+  const cellCol = Math.round(col);
+  const cellRow = Math.round(row);
+  const halted = dirCol === 0 && dirRow === 0;
+  const offAxis =
+    want.dirCol !== 0 ? Math.abs(row - cellRow) : Math.abs(col - cellCol);
 
-    // Only snap to the cell centre when the heading actually changes, otherwise
-    // a frame step smaller than the alignment window would pin the walker in place.
-    if (turning || blocked) {
-      col = centreCol;
-      row = centreRow;
-      if (turning) {
-        dirCol = want.dirCol;
-        dirRow = want.dirRow;
-      } else {
-        dirCol = 0;
-        dirRow = 0;
-      }
-    }
+  if (halted || offAxis < TURN_WINDOW) {
+    // Centre the axis that is not being travelled so the turn stays on the grid.
+    if (want.dirCol !== 0) row = cellRow;
+    else col = cellCol;
+    dirCol = want.dirCol;
+    dirRow = want.dirRow;
+  }
+
+  const aheadCol = Math.round(col);
+  const aheadRow = Math.round(row);
+  const atCentre =
+    Math.abs(col - aheadCol) < TURN_WINDOW && Math.abs(row - aheadRow) < TURN_WINDOW;
+  if (atCentre && !canEnter(grid, aheadCol + dirCol, aheadRow + dirRow)) {
+    return { col: aheadCol, row: aheadRow, dirCol: 0, dirRow: 0 };
   }
 
   return {

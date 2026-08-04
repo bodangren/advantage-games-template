@@ -40,6 +40,9 @@ const UI_FONT = '"Noto Sans Thai", "Sarabun", "Leelawadee UI", Tahoma, sans-seri
 const CREDIT_LINE =
   "Pixel art assets by ElvGames  •  Sound effects by Universal Sound Effects";
 
+/** Orb textures cycled for visual variety, never to mark the next word. */
+const ORB_TEXTURES = ["cm-orb-later", "cm-orb-final", "cm-orb-next"] as const;
+
 /** Hero travel speed in maze cells per second. */
 const HERO_SPEED = 5.4;
 
@@ -143,7 +146,6 @@ export function createCrystalMazeScene(
     private coins: BonusCoin[] = [];
 
     private mazeLayer!: Phaser.GameObjects.Container;
-    private glow!: Phaser.GameObjects.Arc;
     private chest!: Phaser.GameObjects.Image;
     private gate!: Phaser.GameObjects.Image;
     private hitEffect!: Phaser.GameObjects.Sprite;
@@ -209,9 +211,6 @@ export function createCrystalMazeScene(
 
       this.mazeLayer = this.add.container(0, 0);
       this.gate = this.add.image(0, 0, "cm-gate").setDepth(2);
-      this.glow = this.add
-        .circle(0, 0, 10, context.edition.colors.accent, 0.28)
-        .setDepth(3);
       this.chest = this.add.image(0, 0, "cm-chest").setDepth(9).setVisible(false);
       this.hitEffect = this.add.sprite(0, 0, "cm-hit").setDepth(9).setVisible(false);
 
@@ -263,7 +262,7 @@ export function createCrystalMazeScene(
       this.checkOrbs(time);
       this.checkCoins();
       this.checkGoblinContact(time, hunting);
-      this.updateGlow(time, hunting);
+      this.updateOrbs();
       this.renderStatus(time, hunting);
     }
 
@@ -333,7 +332,7 @@ export function createCrystalMazeScene(
         })
         .setDepth(21);
       this.hintText = this.add
-        .text(0, 0, "Collect the glowing word • WASD / arrows / drag", {
+        .text(0, 0, "Collect the words in sentence order • hold WASD / arrows / drag", {
           fontFamily: UI_FONT,
           fontSize: "15px",
           color: context.edition.colors.text,
@@ -409,9 +408,10 @@ export function createCrystalMazeScene(
       if (this.pointerHeld) this.steerToward(pointer.x, pointer.y);
     }
 
-    /** Ends the pointer steer. */
+    /** Ends the pointer steer and halts the hero unless a key is still held. */
     private handlePointerUp(): void {
       this.pointerHeld = false;
+      this.want = { dirCol: 0, dirRow: 0 };
     }
 
     /** Converts a pointer position into the dominant maze heading. */
@@ -421,6 +421,7 @@ export function createCrystalMazeScene(
       const deltaX = x - heroX;
       const deltaY = y - heroY;
       if (Math.abs(deltaX) < this.tile * 0.3 && Math.abs(deltaY) < this.tile * 0.3) {
+        this.want = { dirCol: 0, dirRow: 0 };
         return;
       }
       this.want =
@@ -429,7 +430,10 @@ export function createCrystalMazeScene(
           : { dirCol: 0, dirRow: Math.sign(deltaY) };
     }
 
-    /** Reads WASD and arrow keys into the requested heading. */
+    /**
+     * Reads WASD and arrow keys into the requested heading. The hero moves only
+     * while a direction is held, so releasing every key halts it in place.
+     */
     private readKeyboard(): void {
       const left = this.cursors?.left.isDown || this.keys?.A?.isDown;
       const right = this.cursors?.right.isDown || this.keys?.D?.isDown;
@@ -439,6 +443,7 @@ export function createCrystalMazeScene(
       else if (right) this.want = { dirCol: 1, dirRow: 0 };
       else if (up) this.want = { dirCol: 0, dirRow: -1 };
       else if (down) this.want = { dirCol: 0, dirRow: 1 };
+      else if (!this.pointerHeld) this.want = { dirCol: 0, dirRow: 0 };
     }
 
     /** Spawns the orbs, coins, and goblins for the active sentence. */
@@ -466,11 +471,10 @@ export function createCrystalMazeScene(
       );
       round.words.forEach((word, index) => {
         const cell = orbCells[index] ?? this.heroSpawn;
-        const isFinal = index === round.words.length - 1;
-        const sprite = this.add
-          .sprite(0, 0, isFinal ? "cm-orb-final" : "cm-orb-later")
-          .setDepth(4);
-        sprite.play(isFinal ? "cm-orb-final-spin" : "cm-orb-later-spin");
+        // Colour cycles for visual variety only; it never signals which word is next.
+        const texture = ORB_TEXTURES[index % ORB_TEXTURES.length]!;
+        const sprite = this.add.sprite(0, 0, texture).setDepth(4);
+        sprite.play(`${texture}-spin`);
         const label = this.add
           .text(0, 0, word, {
             fontFamily: UI_FONT,
@@ -694,40 +698,16 @@ export function createCrystalMazeScene(
       this.flashBanner("Sentence complete — Goblin Hunt!");
     }
 
-    /** Keeps the glow marker on the one next-correct orb. */
-    private updateGlow(time: number, hunting: boolean): void {
-      const next = this.orbs.find(
-        (orb) => orb.active && orb.wordIndex === this.state.wordIndex,
-      );
+    /**
+     * Keeps every remaining orb reading identically. The next correct word is
+     * deliberately not marked: the learner decides the order from the Thai
+     * prompt and the English progress line, not from the orb art.
+     */
+    private updateOrbs(): void {
       for (const orb of this.orbs) {
         if (!orb.active) continue;
-        const isNext = orb.wordIndex === this.state.wordIndex;
-        const texture = isNext
-          ? "cm-orb-next"
-          : orb.wordIndex === this.orbs.length - 1
-            ? "cm-orb-final"
-            : "cm-orb-later";
-        if (orb.sprite.texture.key !== texture) {
-          orb.sprite.play(`${texture}-spin`);
-        }
-        const pulse = isNext ? 1 + Math.sin(time / 140) * 0.16 : 1;
-        orb.sprite
-          .setDisplaySize(this.tile * 0.72 * pulse, this.tile * 0.72 * pulse)
-          .setAlpha(isNext ? 1 : 0.45);
-        orb.label.setAlpha(isNext ? 1 : 0.55).setScale(isNext ? 1.05 : 0.92);
-      }
-
-      if (next) {
-        this.glow
-          .setVisible(true)
-          .setPosition(next.sprite.x, next.sprite.y)
-          .setRadius(this.tile * (0.62 + Math.sin(time / 160) * 0.06))
-          .setFillStyle(
-            hunting ? 0x7dd3fc : context.edition.colors.accent,
-            0.3,
-          );
-      } else {
-        this.glow.setVisible(false);
+        orb.sprite.setDisplaySize(this.tile * 0.72, this.tile * 0.72).setAlpha(1);
+        orb.label.setAlpha(1).setScale(1);
       }
     }
 
