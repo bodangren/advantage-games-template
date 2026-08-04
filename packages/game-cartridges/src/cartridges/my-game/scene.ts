@@ -40,6 +40,9 @@ const UI_FONT = '"Noto Sans Thai", "Sarabun", "Leelawadee UI", Tahoma, sans-seri
 const CREDIT_LINE =
   "Pixel art assets by ElvGames  •  Sound effects by Universal Sound Effects";
 
+/** Which card the run is showing: the start card, live play, or the end card. */
+type RunPhase = "start" | "playing" | "over";
+
 /** Orb textures cycled for visual variety, never to mark the next word. */
 const ORB_TEXTURES = ["cm-orb-later", "cm-orb-final", "cm-orb-next"] as const;
 
@@ -123,7 +126,8 @@ export function createCrystalMazeScene(
     private readonly rounds: readonly SentenceRound[] = buildRounds(context.input);
     private readonly seed = context.seed ?? 20260804;
     private state: GameState = createGameState();
-    private finished = false;
+    private phase: RunPhase = "start";
+    private resultsEmitted = false;
 
     private grid: MazeGrid = parseMaze();
     private wide = false;
@@ -155,6 +159,12 @@ export function createCrystalMazeScene(
     private progressText!: Phaser.GameObjects.Text;
     private statusText!: Phaser.GameObjects.Text;
     private hintText!: Phaser.GameObjects.Text;
+    private shade!: Phaser.GameObjects.Rectangle;
+    private cardPanel!: Phaser.GameObjects.Rectangle;
+    private cardTitle!: Phaser.GameObjects.Text;
+    private cardBody!: Phaser.GameObjects.Text;
+    private cardButton!: Phaser.GameObjects.Rectangle;
+    private cardButtonText!: Phaser.GameObjects.Text;
     private bannerBox!: Phaser.GameObjects.Rectangle;
     private bannerText!: Phaser.GameObjects.Text;
     private creditText!: Phaser.GameObjects.Text;
@@ -162,13 +172,15 @@ export function createCrystalMazeScene(
     private powerUpUntil = 0;
     private stunUntil = 0;
     private invulnerableUntil = 0;
-    private paused = false;
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
     private keys?: Record<string, Phaser.Input.Keyboard.Key>;
     private pointerHeld = false;
     private random: () => number = createRandom(this.seed);
 
     preload(): void {
+      // Adopt the host container size before the first frame renders, so a
+      // freshly mounted game never shows a stretched boot canvas.
+      this.syncToParent();
       this.loadSheet("cm-hero", "player.hero-3");
       for (const plan of GOBLIN_PLANS) this.loadSheet(plan.key, plan.role);
       this.loadSheet("cm-orb-next", "orb.crystal-yellow");
@@ -193,6 +205,7 @@ export function createCrystalMazeScene(
     }
 
     create(): void {
+      this.syncToParent();
       this.cameras.main.setBackgroundColor(context.edition.colors.background);
       this.wide = this.scale.width >= this.scale.height;
       this.grid = orientMaze(parseMaze(), this.wide);
@@ -218,6 +231,7 @@ export function createCrystalMazeScene(
       this.hero.play("cm-hero-run");
 
       this.createHud();
+      this.createCard();
       this.createGoblins();
       this.bindInput();
 
@@ -233,11 +247,12 @@ export function createCrystalMazeScene(
       });
 
       if (this.rounds.length === 0) {
-        this.finish("No sentences supplied", "lost");
+        this.finish("No sentences supplied", "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e1b\u0e23\u0e30\u0e42\u0e22\u0e04", "lost");
         return;
       }
 
       this.startRound(true);
+      this.showStartCard();
       this.layout();
       context.diagnostic({
         code: "GAME_READY",
@@ -246,7 +261,7 @@ export function createCrystalMazeScene(
     }
 
     update(time: number, delta: number): void {
-      if (this.finished || this.paused) return;
+      if (this.phase !== "playing") return;
       const step = Math.min(delta, 48) / 1000;
       const hunting = time < this.powerUpUntil;
 
@@ -366,6 +381,173 @@ export function createCrystalMazeScene(
         .setOrigin(0.5)
         .setDepth(31)
         .setVisible(false);
+    }
+
+    /** Builds the shared start and end card, hidden until a phase needs it. */
+    private createCard(): void {
+      this.shade = this.add
+        .rectangle(0, 0, 10, 10, 0x0b1220, 0.74)
+        .setOrigin(0)
+        .setDepth(40)
+        .setVisible(false);
+      this.cardPanel = this.add
+        .rectangle(0, 0, 10, 10, context.edition.colors.panel, 1)
+        .setDepth(41)
+        .setVisible(false);
+      this.cardTitle = this.add
+        .text(0, 0, "", {
+          fontFamily: UI_FONT,
+          fontSize: "34px",
+          color: context.edition.colors.text,
+          align: "center",
+        })
+        .setOrigin(0.5, 0)
+        .setDepth(42)
+        .setVisible(false);
+      this.cardBody = this.add
+        .text(0, 0, "", {
+          fontFamily: UI_FONT,
+          fontSize: "17px",
+          color: context.edition.colors.text,
+          align: "center",
+          lineSpacing: 5,
+        })
+        .setOrigin(0.5, 0)
+        .setDepth(42)
+        .setVisible(false);
+      this.cardButton = this.add
+        .rectangle(0, 0, 10, 10, context.edition.colors.accent, 1)
+        .setDepth(42)
+        .setVisible(false)
+        .setInteractive({ useHandCursor: true });
+      this.cardButtonText = this.add
+        .text(0, 0, "", {
+          fontFamily: UI_FONT,
+          fontSize: "20px",
+          color: "#0b1220",
+          align: "center",
+        })
+        .setOrigin(0.5)
+        .setDepth(43)
+        .setVisible(false);
+
+      this.cardButton.on(Phaser.Input.Events.POINTER_DOWN, this.confirmCard, this);
+      this.input.keyboard?.on("keydown-ENTER", this.confirmCard, this);
+      this.input.keyboard?.on("keydown-SPACE", this.confirmCard, this);
+    }
+
+    /** Shows the start card with the goal, controls, and required credits. */
+    private showStartCard(): void {
+      this.phase = "start";
+      this.cardTitle.setText("Crystal Maze");
+      this.cardBody.setText(
+        [
+          "Read the Thai sentence, then collect its English",
+          "words in the correct order.",
+          "อ่านประโยคภาษาไทย แล้วเก็บคำภาษาอังกฤษให้ครบตามลำดับ",
+          "",
+          "Hold WASD / arrow keys, or drag on the maze.",
+          "กดค้าง WASD หรือปุ่มลูกศร หรือลากบนเขาวงกต",
+          "",
+          `3 lives  •  ${this.rounds.length} sentence${this.rounds.length === 1 ? "" : "s"}  •  avoid the goblins`,
+          "",
+          CREDIT_LINE,
+        ].join("\n"),
+      );
+      this.cardButtonText.setText("เริ่มเล่น  •  Play");
+      this.setCardVisible(true);
+      this.layoutCard();
+    }
+
+    /** Shows the end card with the run summary and a replay control. */
+    private showEndCard(
+      message: string,
+      thai: string,
+      summary: ReturnType<typeof results>,
+      status: "won" | "lost",
+    ): void {
+      const round = Math.min(this.state.sentencesCompleted, this.rounds.length);
+      this.cardTitle.setText(`${message}\n${thai}`);
+      this.cardBody.setText(
+        [
+          status === "won"
+            ? "You carried every crystal home."
+            : "The goblins keep the crystals this time.",
+          "",
+          `Score  ${summary.score}`,
+          `Accuracy  ${Math.round(summary.accuracy * 100)}%`,
+          `Words in order  ${summary.correctAnswers} / ${summary.totalAttempts}`,
+          `Sentences  ${round} / ${this.rounds.length}`,
+          "",
+          CREDIT_LINE,
+        ].join("\n"),
+      );
+      this.cardButtonText.setText("เล่นอีกครั้ง  •  Play again");
+      this.setCardVisible(true);
+      this.layoutCard();
+    }
+
+    /** Toggles every card element together. */
+    private setCardVisible(visible: boolean): void {
+      this.shade.setVisible(visible);
+      this.cardPanel.setVisible(visible);
+      this.cardTitle.setVisible(visible);
+      this.cardBody.setVisible(visible);
+      this.cardButton.setVisible(visible);
+      this.cardButtonText.setVisible(visible);
+    }
+
+    /** Starts the run from the start card, or replays it from the end card. */
+    private confirmCard(): void {
+      if (this.phase === "playing") return;
+      const replaying = this.phase === "over";
+      this.sound.play("cm-confirm", { volume: 0.4 });
+      this.setCardVisible(false);
+      this.pointerHeld = false;
+      this.want = { dirCol: 0, dirRow: 0 };
+      this.powerUpUntil = 0;
+      this.stunUntil = 0;
+      this.invulnerableUntil = 0;
+
+      if (replaying) {
+        // A replay is a fresh run for the learner; the host still receives
+        // exactly one result, emitted when the first run ended.
+        this.state = createGameState();
+        this.startRound(true);
+        this.renderPrompt();
+      }
+      this.phase = "playing";
+    }
+
+    /** Centres the card over the whole canvas at either viewport profile. */
+    private layoutCard(): void {
+      const { width, height } = this.scale;
+      this.shade.setPosition(0, 0).setSize(width, height);
+
+      const panelWidth = Math.min(560, width - 32);
+      this.cardTitle.setWordWrapWidth(panelWidth - 48);
+      this.cardBody.setWordWrapWidth(panelWidth - 48);
+      this.cardTitle.setFontSize(width < 520 ? 26 : 34);
+      this.cardBody.setFontSize(width < 520 ? 15 : 17);
+      this.cardButtonText.setFontSize(width < 520 ? 18 : 20);
+
+      const buttonHeight = Math.max(48, height * 0.06);
+      const contentHeight =
+        this.cardTitle.height + 18 + this.cardBody.height + 22 + buttonHeight;
+      const panelHeight = Math.min(height - 24, contentHeight + 48);
+      const centreX = width / 2;
+      const top = (height - panelHeight) / 2;
+
+      this.cardPanel
+        .setPosition(centreX, height / 2)
+        .setSize(panelWidth, panelHeight);
+      this.cardTitle.setPosition(centreX, top + 24);
+      this.cardBody.setPosition(centreX, this.cardTitle.y + this.cardTitle.height + 18);
+      const buttonY = this.cardBody.y + this.cardBody.height + 22 + buttonHeight / 2;
+      this.cardButton
+        .setPosition(centreX, buttonY)
+        .setSize(Math.min(panelWidth - 48, 320), buttonHeight);
+      this.cardButtonText.setPosition(centreX, buttonY);
     }
 
     /** Creates every goblin sprite once; rounds decide how many are active. */
@@ -614,13 +796,13 @@ export function createCrystalMazeScene(
 
         this.celebrateSentence();
         if (applied.outcome === "won") {
-          this.finish("Maze cleared! ทำได้ดีมาก", "won");
+          this.finish("Maze cleared!", "ผ่านเขาวงกตแล้ว!", "won");
           return;
         }
         this.powerUpUntil = time + POWER_UP_MS;
         this.sound.play("cm-power", { volume: 0.4 });
         this.time.delayedCall(650, () => {
-          if (!this.finished) this.startRound(false);
+          if (this.phase === "playing") this.startRound(false);
         });
         return;
       }
@@ -674,7 +856,7 @@ export function createCrystalMazeScene(
         };
         this.want = { dirCol: 0, dirRow: 0 };
         if (this.state.status === "lost") {
-          this.finish("Out of lives — the goblins keep the crystals", "lost");
+          this.finish("Out of lives", "หมดชีวิตแล้ว", "lost");
         }
         return;
       }
@@ -737,31 +919,27 @@ export function createCrystalMazeScene(
         .setSize(this.bannerText.width + 40, this.bannerText.height + 26);
       this.layoutBanner();
       this.time.delayedCall(1200, () => {
-        if (this.finished) return;
+        if (this.phase !== "playing") return;
         this.bannerText.setVisible(false);
         this.bannerBox.setVisible(false);
       });
     }
 
-    /** Ends the run and emits the host result contract exactly once. */
-    private finish(message: string, status: "won" | "lost"): void {
-      if (this.finished) return;
-      this.finished = true;
-      this.paused = true;
+    /** Ends the run, shows the end card, and emits the host result exactly once. */
+    private finish(message: string, thai: string, status: "won" | "lost"): void {
+      if (this.phase === "over") return;
+      this.phase = "over";
+      this.bannerText.setVisible(false);
+      this.bannerBox.setVisible(false);
       const summary = results(this.state);
-      this.bannerText
-        .setText(
-          `${message}\n\nScore ${summary.score}  •  ${summary.correctAnswers}/${summary.totalAttempts} orbs in order`,
-        )
-        .setVisible(true);
-      this.bannerBox
-        .setVisible(true)
-        .setSize(this.bannerText.width + 48, this.bannerText.height + 32);
-      this.layoutBanner();
+      if (!this.resultsEmitted) {
+        this.resultsEmitted = true;
+        context.complete(summary);
+      }
       this.sound.play(status === "won" ? "cm-sentence" : "cm-wrong", {
         volume: 0.5,
       });
-      context.complete(summary);
+      this.showEndCard(message, thai, summary, status);
       context.diagnostic({
         code: status === "won" ? "GAME_WON" : "GAME_OVER",
         message,
@@ -879,6 +1057,7 @@ export function createCrystalMazeScene(
       this.drawMaze();
       this.layoutEntities();
       this.layoutBanner();
+      this.layoutCard();
     }
 
     /** Redraws floor, wall, torch, and gate tiles at the current tile size. */
@@ -961,6 +1140,9 @@ export function createCrystalMazeScene(
       this.input.off(Phaser.Input.Events.POINTER_DOWN, this.handlePointer, this);
       this.input.off(Phaser.Input.Events.POINTER_MOVE, this.handlePointerMove, this);
       this.input.off(Phaser.Input.Events.POINTER_UP, this.handlePointerUp, this);
+      this.input.keyboard?.off("keydown-ENTER", this.confirmCard, this);
+      this.input.keyboard?.off("keydown-SPACE", this.confirmCard, this);
+      this.cardButton.off(Phaser.Input.Events.POINTER_DOWN, this.confirmCard, this);
       this.input.keyboard?.removeAllKeys(true);
       this.tweens.killAll();
       this.time.removeAllEvents();
