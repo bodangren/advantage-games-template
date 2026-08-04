@@ -13,10 +13,16 @@
 - Work only in paths permitted by `AGENTS.md`; do not weaken competition infrastructure.
 - Run `pnpm validate` before submission.
 
+## Week 3 fixed brief
+
+Week 3 implements the fixed **Crystal Maze** brief in [CRYSTAL_MAZE.md](CRYSTAL_MAZE.md): a Pac-Man-style sentence game with the sentence-order orb rule, the Goblin Hunt power-up, lives, and a 3→7 word difficulty ramp. The concept is fixed; do not pitch a different genre.
+
 ## Competition palette
 
-Use the frozen Crystal Courier selected union in [COMPETITION_PALETTE.md](COMPETITION_PALETTE.md). Resolve its stable roles through `context.assets.resolve(role)`; never encode asset URLs, raw public paths, source filenames, or remote art links. Declare the roles your game actually uses in `manifest.requiredAssetBindings`.
+Use the frozen Week 3 Crystal Maze selected union in [COMPETITION_PALETTE.md](COMPETITION_PALETTE.md). Resolve its stable roles through `context.assets.resolve(role)`; never encode asset URLs, raw public paths, source filenames, or remote art links. Declare the roles your game actually uses in `manifest.requiredAssetBindings`.
 
-The required visible credit is **Pixel art assets by ElvGames**. The supplied extra enemies, layers, crystals, coins, effect, and sound are intended to give teams room to explore different mechanics without sourcing additional art.
+The required visible credits are **Pixel art assets by ElvGames** and **Sound effects by Universal Sound Effects**. The extra heroes, goblins, orbs, themes, and sounds give teams room for slightly different combinations without sourcing additional art.
 
-Crystal Courier is a suggested vocabulary-game direction, not a mandatory genre. A submission remains a candidate cartridge until post-event host, asset, license/credit, and owner review.
+## Judging
+
+Judging follows [JUDGING.md](JUDGING.md). Fidelity to the fixed Crystal Maze brief counts: the order rule, power-up rule, lives, ramp, and win/lose behavior must match the brief. Within the brief, teams may vary maze layout, hero/goblin/theme picks, orb placement, and speeds. A submission remains a candidate cartridge until post-event host, asset, license/credit, and owner review.

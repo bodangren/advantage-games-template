@@ -6,10 +6,14 @@ This repository is an LLM-first competition workspace. Build one import-ready Ph
 
 When the contestant asks for the rules or what to do first:
 
-1. Read this file and `docs/COMPETITION_RULES.md`, `docs/COMPETITION_PALETTE.md`, `docs/GAME_CONTRACT.md`, and `docs/JUDGING.md`.
-2. Explain the mission, the 100-point scoring rubric, frozen palette, immutable contracts, editable paths, and `pnpm validate`.
-3. Ask for the game concept, repeated player action, learning loop, correct/incorrect consequences, and win condition.
-4. Do not edit code until that short concept discussion is complete.
+1. Read this file and `docs/CRYSTAL_MAZE.md`, `docs/COMPETITION_RULES.md`, `docs/COMPETITION_PALETTE.md`, `docs/GAME_CONTRACT.md`, and `docs/JUDGING.md`.
+2. Explain the mission, the 100-point scoring rubric, the fixed Week 3 brief, frozen palette, immutable contracts, editable paths, and `pnpm validate`.
+3. Read `docs/CRYSTAL_MAZE.md` (the fixed brief) and plan the maze + systems.
+4. Implement the plan in the editable paths.
+5. Run `pnpm validate`.
+6. Capture compact and wide screenshots for the pull request.
+
+The concept is fixed — do not ask for a game concept or pitch a different genre.
 
 ## Editable Paths
 
@@ -58,9 +62,9 @@ Identity, persistence, tenancy, and authoritative XP belong to the education app
 
 ## Frozen Competition Palette
 
-Use only the Crystal Courier roles in `docs/COMPETITION_PALETTE.md`. Obtain every descriptor through `context.assets.resolve(role)`, then use its URL and frame metadata with Phaser. Never hard-code asset paths, URLs, source filenames, frame dimensions, or remote art links.
+Use only the Week 3 Crystal Maze roles in `docs/COMPETITION_PALETTE.md`. Obtain every descriptor through `context.assets.resolve(role)`, then use its URL and frame metadata with Phaser. Never hard-code asset paths, URLs, source filenames, frame dimensions, or remote art links.
 
-Declare the exact stable roles your game uses in `manifest.requiredAssetBindings`. The organizer requires the visible credit **Pixel art assets by ElvGames**. The supplied starter is a suggested concept; teams may change the mechanic while preserving the contracts and palette rules.
+Declare the exact stable roles your game uses in `manifest.requiredAssetBindings`. The organizer requires the visible credits **Pixel art assets by ElvGames** and **Sound effects by Universal Sound Effects**. The Crystal Maze brief is fixed; within it teams vary maze layout, hero/goblin/theme picks, orb placement, and speeds.
 
 ## Mandatory Engineering Rules
 

@@ -33,7 +33,7 @@ for (const file of required) {
 const forbiddenImport =
   /(?:from\s*["']|import\s*\(["'])(next|react|@reading-advantage\/(?:auth|db)|konva|react-konva|three|@react-three\/|@\/|apps\/)/;
 const forbiddenPaletteReference =
-  /(?:\/assets\/competition\/crystal-courier\/|source-[a-f0-9]{12}\.(?:png|ogg)|https?:\/\/)/;
+  /(?:\/assets\/competition\/|source-[a-f0-9]{12}\.(?:png|ogg)|https?:\/\/)/;
 
 for (const file of names.filter((name) => name.endsWith(".ts"))) {
   const source = await readFile(path.join(dir, file), "utf8");

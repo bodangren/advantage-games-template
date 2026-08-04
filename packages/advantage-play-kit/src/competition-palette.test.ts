@@ -22,6 +22,34 @@ describe("Crystal Courier competition palette", () => {
       "bonus.coin",
       "feedback.hit",
       "audio.feedback-hit",
+      "player.hero-1",
+      "player.hero-2",
+      "player.hero-3",
+      "player.hero-4",
+      "player.hero-5",
+      "player.hero-6",
+      "goblin.scout",
+      "goblin.stalker",
+      "goblin.brute",
+      "goblin.warden",
+      "orb.crystal-blue",
+      "orb.crystal-green",
+      "orb.crystal-yellow",
+      "bonus.chest",
+      "maze.wall-cavern",
+      "maze.floor-cavern",
+      "maze.wall-dungeon",
+      "maze.floor-dungeon",
+      "maze.wall-crypt",
+      "maze.floor-crypt",
+      "maze.gate",
+      "maze.torch",
+      "audio.orb-pickup",
+      "audio.wrong-orb",
+      "audio.power-up",
+      "audio.goblin-defeat",
+      "audio.sentence-complete",
+      "audio.ui-confirm",
     ] satisfies readonly CompetitionAssetId[]);
 
     const runner = competitionAssetResolver.resolve("runner.walk");
@@ -36,7 +64,7 @@ describe("Crystal Courier competition palette", () => {
 
   it("rejects an asset outside the organizer-owned palette", () => {
     expect(() => competitionAssetResolver.resolve("legacy.dragon" as CompetitionAssetId)).toThrow(
-      /Unknown Crystal Courier competition asset/u,
+      /Unknown competition asset/u,
     );
   });
 });

@@ -23,6 +23,45 @@
         "hit.png",
         "feedback-hit.ogg"
       ]
+    },
+    {
+      "scope": "Crystal Maze organizer competition palette (Week 3 fixed brief)",
+      "release": "2026.08.04",
+      "catalogDigest": "cd238d3310cf9136ca331ae1f20f9214e5ae3a59dfa10539f47234fff5ba751f",
+      "sourceReceiptDigest": "c06bad4bf118bffac14b4469fc54b0ba1c84dda8c8b43a143aaf6caf0f0caf2c",
+      "requiredCredit": "Pixel art assets by ElvGames; Sound effects by Universal Sound Effects",
+      "files": [
+        "audio-goblin-defeat.ogg",
+        "audio-orb-pickup.ogg",
+        "audio-power-up.ogg",
+        "audio-sentence-complete.ogg",
+        "audio-ui-confirm.ogg",
+        "audio-wrong-orb.ogg",
+        "chest.png",
+        "coin.png",
+        "crystal-blue.png",
+        "crystal-green.png",
+        "crystal-yellow.png",
+        "floor-cavern.png",
+        "floor-crypt.png",
+        "floor-dungeon.png",
+        "gate.png",
+        "goblin-brute.png",
+        "goblin-scout.png",
+        "goblin-stalker.png",
+        "goblin-warden.png",
+        "hero-1.png",
+        "hero-2.png",
+        "hero-3.png",
+        "hero-4.png",
+        "hero-5.png",
+        "hero-6.png",
+        "hit.png",
+        "torch.png",
+        "wall-cavern.png",
+        "wall-crypt.png",
+        "wall-dungeon.png"
+      ]
     }
   ],
   "note": "This frozen selected union is supplied by organizers for competition use. Submitted cartridges remain candidate cartridges pending post-event host, attribution, and owner review."
