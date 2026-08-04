@@ -1,861 +1,778 @@
-import Phaser from 'phaser';
-import { EventBus, Events } from '../core/EventBus';
-import { gameState } from '../core/GameState';
-import { GAME, PLAYER, XP, PALETTE, UI, TYPING, ENEMY } from '../core/Constants';
-import { Player } from '../objects/Player';
-import { EnemyGroup, Enemy } from '../objects/Enemy';
-import { WeaponSystem } from '../objects/Weapon';
-import { XPGroup } from '../objects/XPGem';
-import { DiamondGroup } from '../objects/DiamondItem';
-import { SpawnSystem } from '../systems/SpawnSystem';
-import { TypingSystem } from '../systems/TypingSystem';
-import { TypingUI } from '../ui/TypingUI';
+import Phaser from "phaser";
+import { getRuntime, resetGame } from "../systems/runtime";
+import { MineGrid, type LetterPlacement } from "../systems/MineGrid";
+import { seededRng } from "../systems/LetterBag";
+import { GameState, MAX_HEALTH, WIN_GOAL } from "../systems/GameState";
+import {
+  LaserScheduler,
+  type LaserEvent,
+  isVisible,
+  sweepOffset,
+  hitsPoint,
+  isGuiding,
+} from "../systems/LaserSystem";
+import {
+  CAVE_BG,
+  DUG_LIGHT,
+  EASY_LETTER_COLOR,
+  FONT,
+  HARD_LETTER_COLOR,
+  LANTERN,
+  LANTERN_GLOW,
+  MINE_ROCK,
+  WOOD,
+  WOOD_DARK,
+  letterVisual,
+} from "../data/visual";
+import type { DeckWord } from "../data/words";
+import { ChibiSkeletonMiner, type Facing } from "../objects/ChibiSkeletonMiner";
+import { Gem } from "../objects/Gem";
+import { spawnDigParticles, spawnGemPop } from "../objects/DigParticles";
 
+const COLS = 9;
+const ROWS = 11;
+const PLAYER_SPEED = 8.5; // cells per second
+const BEAM_THICKNESS = 0.045; // normalized
+const FIRST_LASER_AT = 1600; // ms before the first guide line appears
+
+/** Main gameplay scene: mine letters, spell words, dodge sweeping lasers. */
 export class Game extends Phaser.Scene {
-    private player!: Player;
-    private enemies!: EnemyGroup;
-    private xpGems!: XPGroup;
-    private weaponSystem!: WeaponSystem;
-    private spawnSystem!: SpawnSystem;
-    private typingSystem!: TypingSystem;
-    private typingUI!: TypingUI;
-    private autoBullets!: Phaser.Physics.Arcade.Group;
-    private autoShootTimer = 0;
-    private diamonds!: DiamondGroup;
-    private diamondEffectActive = false;
-    private diamondEffectTimer = 0;
-    private readonly DIAMOND_EFFECT_DURATION = 10000;
+  constructor() {
+    super("Game");
+  }
 
-    private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-    private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
+  private state!: GameState;
+  private grid!: MineGrid;
+  private t = 0;
+  private lasers!: LaserScheduler;
+  private playerX = 2;
+  private playerY = 5;
+  private facing: Facing = "right";
 
-    private scoreText!: Phaser.GameObjects.Text;
-    private healthBar!: Phaser.GameObjects.Rectangle;
-    private healthBarBg!: Phaser.GameObjects.Rectangle;
-    private xpBar!: Phaser.GameObjects.Rectangle;
-    private xpBarBg!: Phaser.GameObjects.Rectangle;
-    private levelText!: Phaser.GameObjects.Text;
-    private timeText!: Phaser.GameObjects.Text;
-    private killText!: Phaser.GameObjects.Text;
+  // Rendering
+  private tileGraphics!: Phaser.GameObjects.Graphics;
+  private caveGraphics!: Phaser.GameObjects.Graphics;
+  private propsGraphics!: Phaser.GameObjects.Graphics;
+  private gemTexts: Phaser.GameObjects.Container[] = [];
+  private player!: ChibiSkeletonMiner;
+  private playerGlow!: Phaser.GameObjects.Arc;
+  private targetMarker!: Phaser.GameObjects.Rectangle;
+  private laserGraphics!: Phaser.GameObjects.Graphics;
+  private boardX = 0;
+  private boardY = 0;
+  private cell = 1;
+  private boardW = 0;
+  private boardH = 0;
+  private panelW = 0;
+  private goalsH = 0;
 
-    private bg!: Phaser.GameObjects.Graphics;
-    private gridSize = 80;
+  // HUD
+  private hpText!: Phaser.GameObjects.Text;
+  private scoreText!: Phaser.GameObjects.Text;
+  private roundText!: Phaser.GameObjects.Text;
+  private goalCards: Phaser.GameObjects.Container[] = [];
+  private boardRotated = false;
 
-    private spaceKey!: Phaser.Input.Keyboard.Key;
-    private pauseContainer!: Phaser.GameObjects.Container;
-    private pauseOverlay!: Phaser.GameObjects.Rectangle;
-    private pauseTitle!: Phaser.GameObjects.Text;
-    private continueBtn!: Phaser.GameObjects.Container;
-    private restartBtn!: Phaser.GameObjects.Container;
-    private pauseHint!: Phaser.GameObjects.Text;
+  // Input
+  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
+  private spaceKey!: Phaser.Input.Keyboard.Key;
+  private goalKeys: Phaser.Input.Keyboard.Key[] = [];
+  private dragStart: { x: number; y: number } | null = null;
+  private dragVector = { x: 0, y: 0 };
 
-    private oceanParticles: Phaser.GameObjects.Arc[] = [];
-    private lightRays: Phaser.GameObjects.Graphics[] = [];
-    private bubbleTimer = 0;
-    private readonly BUBBLE_INTERVAL = 2000;
+  create(): void {
+    const runtime = getRuntime();
+    this.state = resetGame();
+    this.input.removeAllListeners();
+    this.cameras.main.setBackgroundColor(CAVE_BG);
 
-    constructor() { super('Game'); }
-
-    create() {
-        gameState.reset();
-        gameState.started = true;
-
-        this.createBackground();
-        this.createGrid();
-        this.createOceanAnimations();
-
-        this.player = new Player(this, GAME.WIDTH / 2, GAME.HEIGHT / 2);
-
-        this.enemies = new EnemyGroup(this);
-        this.xpGems = new XPGroup(this);
-        this.weaponSystem = new WeaponSystem(this, this.enemies, this.player);
-        this.spawnSystem = new SpawnSystem(this, this.enemies);
-
-        this.typingSystem = new TypingSystem(this, this.enemies, this.player);
-        this.typingUI = new TypingUI(this);
-
-        this.autoBullets = this.physics.add.group({
-            classType: Phaser.GameObjects.Arc,
-            maxSize: 100,
-            runChildUpdate: false,
-        });
-
-        this.diamonds = new DiamondGroup(this);
-
-        this.physics.add.overlap(
-            this.weaponSystem.projectiles,
-            this.enemies,
-            this.onProjectileHitEnemy as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-            undefined,
-            this
-        );
-
-        this.physics.add.overlap(
-            this.player,
-            this.enemies,
-            this.onPlayerHitEnemy as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-            undefined,
-            this
-        );
-
-        this.physics.add.overlap(
-            this.autoBullets,
-            this.enemies,
-            this.onAutoBulletHitEnemy as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-            undefined,
-            this
-        );
-
-        this.physics.add.overlap(
-            this.player,
-            this.diamonds,
-            this.onPlayerHitDiamond as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-            undefined,
-            this
-        );
-
-        this.cursors = this.input.keyboard!.createCursorKeys();
-        this.wasd = {
-            W: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-            A: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-            S: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-            D: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-        };
-
-        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-            if (gameState.gameOver || gameState.paused) return;
-            const worldX = pointer.worldX;
-            const worldY = pointer.worldY;
-            const clickedEnemy = this.enemies.getEnemyAt(worldX, worldY);
-            if (clickedEnemy) {
-                this.typingSystem.switchTarget(clickedEnemy);
-            }
-        });
-
-        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-        this.cameras.main.setBounds(0, 0, GAME.WORLD_SIZE, GAME.WORLD_SIZE);
-        this.physics.world.setBounds(0, 0, GAME.WORLD_SIZE, GAME.WORLD_SIZE);
-
-        this.createUI();
-        this.createPauseMenu();
-
-        this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-        this.spaceKey.on('down', this.togglePause, this);
-
-        EventBus.on(Events.PLAYER_DIED, this.onPlayerDied, this);
-        EventBus.on(Events.PLAYER_LEVEL_UP, this.onLevelUp, this);
-        EventBus.on(Events.ENEMY_KILLED, this.onEnemyKilled, this);
-        EventBus.on(Events.TYPING_WORD_COMPLETE, this.onTypingWordComplete, this);
-        EventBus.on(Events.TYPING_STREAK, this.onTypingStreak, this);
-        EventBus.on(Events.DIAMOND_COLLECTED, this.onDiamondCollected, this);
-        this.events.on('shutdown', this.cleanup, this);
-
-        EventBus.emit(Events.SPECTACLE_ENTRANCE);
+    // Build grid and scatter every target letter across the floor.
+    this.grid = new MineGrid(COLS, ROWS);
+    const rng = seededRng(`${runtime.context.seed ?? 42}:${Date.now()}`);
+    const placements: LetterPlacement[] = [];
+    for (const w of runtime.deck) {
+      for (const letter of w.letters) placements.push({ letter, difficulty: w.difficulty });
     }
+    this.grid.scatter(placements, rng);
 
-    private createBackground() {
-        const tileKey = 'ocean_tile';
-        const tileSize = 400;
+    this.lasers = new LaserScheduler(rng, FIRST_LASER_AT);
 
-        if (!this.textures.exists(tileKey)) {
-            this.generateOceanTile(tileKey, tileSize);
+    this.state.startFirstRound();
+
+    this.layout();
+    this.buildBoard();
+    this.buildHUD();
+    this.rebuildGoalsPanel();
+    this.setupInput();
+
+    this.events.on("shutdown", this.cleanup, this);
+    this.events.on("destroy", this.cleanup, this);
+  }
+
+  private layout(): void {
+    const W = this.scale.width;
+    const H = this.scale.height;
+    const hudH = Math.max(60, H * 0.12);
+    const wide = W > 800;
+    this.panelW = wide ? Phaser.Math.Clamp(Math.round(W * 0.24), 300, 440) : 0;
+    this.goalsH = wide ? 0 : Math.round(H * 0.13);
+    const left = 8;
+    const top = hudH + (wide ? 0 : this.goalsH) + 8;
+    const right = W - (wide ? this.panelW + 8 : 8);
+    const bottom = H - 8;
+    const availW = right - left;
+    const availH = bottom - top;
+    this.cell = Math.max(16, Math.min(availW / COLS, availH / ROWS));
+    this.boardW = this.cell * COLS;
+    this.boardH = this.cell * ROWS;
+    this.boardX = left + (availW - this.boardW) / 2;
+    this.boardY = top + (availH - this.boardH) / 2;
+  }
+
+  private buildBoard(): void {
+    // Dark rocky cave backdrop sits behind everything.
+    this.caveGraphics = this.add.graphics();
+    this.caveGraphics.setDepth(-1);
+    this.caveGraphics.setScrollFactor(0);
+    this.drawCave();
+
+    this.tileGraphics = this.add.graphics();
+    this.tileGraphics.setDepth(0);
+    this.tileGraphics.setScrollFactor(0);
+
+    this.redrawBoard();
+
+    // Wood beams + lanterns above tiles but below gems.
+    this.propsGraphics = this.add.graphics();
+    this.propsGraphics.setDepth(1);
+    this.propsGraphics.setScrollFactor(0);
+    this.drawMineProps();
+
+    this.laserGraphics = this.add.graphics();
+    this.laserGraphics.setDepth(3);
+    this.laserGraphics.setScrollFactor(0);
+
+    // Terraria dig-outline: a soft radial glow behind the miner.
+    this.playerGlow = this.add.circle(0, 0, this.cell * 0.7, 0xffffff, 0.12).setScrollFactor(0).setDepth(1);
+
+    // Chibi Skeleton Miner
+    const px = this.boardX + (this.playerX + 0.5) * this.cell;
+    const py = this.boardY + (this.playerY + 0.5) * this.cell;
+    this.player = new ChibiSkeletonMiner(this, px, py - this.cell * 0.15, this.cell * 0.8);
+    this.player.setDepth(4);
+    this.playerGlow.setPosition(px, py);
+
+    // Highlight the block the miner stands on (that is the block Space digs).
+    this.targetMarker = this.add
+      .rectangle(0, 0, this.cell, this.cell, 0xffffff, 0.14)
+      .setStrokeStyle(Math.max(2, this.cell * 0.08), 0xffffff, 0.85)
+      .setDepth(1)
+      .setScrollFactor(0);
+  }
+
+  /** Draws the near-black cave backdrop with stalactite hints along the top. */
+  private drawCave(): void {
+    const g = this.caveGraphics;
+    const W = this.scale.width;
+    const H = this.scale.height;
+    g.fillStyle(0x0a0c12, 1);
+    g.fillRect(0, 0, W, H);
+    // Faint rock texture speckles.
+    g.fillStyle(0xffffff, 0.02);
+    for (let i = 0; i < 60; i++) {
+      const sx = (i * 137) % W;
+      const sy = ((i * 61) % H) + (this.boardY > 0 ? this.boardY * 0.5 : 0);
+      g.fillCircle(sx, sy, (i % 3) + 1);
+    }
+    // Stalactites hanging from the top edge.
+    g.fillStyle(0x0d0f16, 1);
+    for (let sx = -20; sx < W + 20; sx += (W / 8) + 30) {
+      const w = Math.max(16, W * 0.06);
+      const h = Math.max(18, H * 0.03) + ((sx * 7) % 18);
+      g.fillTriangle(sx, -5, sx + w, -5, sx + w / 2, h);
+    }
+  }
+
+  /** Draws wooden support beams and hanging lanterns around the mine floor. */
+  private drawMineProps(): void {
+    const g = this.propsGraphics;
+    g.clear();
+    const bx = this.boardX;
+    const by = this.boardY;
+    const bw = this.boardW;
+    const bh = this.boardH;
+    const beam = Math.max(8, this.cell * 0.42);
+    // Top beam spanning the mine entrance.
+    g.fillStyle(WOOD, 1);
+    g.fillRect(bx - this.cell * 0.3, by - beam, bw + this.cell * 0.6, beam);
+    g.fillStyle(WOOD_DARK, 1);
+    g.fillRect(bx - this.cell * 0.3, by - beam, bw + this.cell * 0.6, beam * 0.22);
+    // Vertical support pillars along the sides.
+    for (const side of [-1, 1]) {
+      const colX = side === -1 ? bx - beam * 0.6 : bx + bw - beam * 0.4;
+      g.fillStyle(WOOD, 1);
+      g.fillRect(colX, by - beam, beam, bh + beam);
+      g.fillStyle(WOOD_DARK, 1);
+      g.fillRect(colX + beam * (side === -1 ? 0.75 : 0), by - beam, beam * 0.25, bh + beam);
+    }
+    // Lanterns hanging from the top beam at a couple of points.
+    for (const fx of [0.3, 0.7]) {
+      const lx = bx + bw * fx;
+      const ly = by + this.cell * 0.35;
+      // Warm glow halo.
+      g.fillStyle(LANTERN_GLOW, 0.22);
+      g.fillCircle(lx + this.cell * 0.5, ly + this.cell * 0.5, this.cell * 0.9);
+      // Lantern body.
+      g.lineStyle(beam * 0.12, WOOD_DARK, 1);
+      g.lineBetween(lx + this.cell * 0.5, by - beam, lx + this.cell * 0.5, ly + this.cell * 0.1);
+      g.fillStyle(LANTERN, 1);
+      g.fillRoundedRect(lx + this.cell * 0.2, ly + this.cell * 0.2, this.cell * 0.6, this.cell * 0.55, 3);
+      g.fillStyle(LANTERN_GLOW, 1);
+      g.fillRect(lx + this.cell * 0.28, ly + this.cell * 0.3, this.cell * 0.44, this.cell * 0.32);
+    }
+  }
+
+  private makeGem(cell: (typeof this.grid.cells)[number], reveal: boolean): void {
+    const vis = letterVisual(cell.difficulty ?? "easy");
+    const gem = new Gem(
+      this,
+      this.boardX + cell.x * this.cell + this.cell / 2,
+      this.boardY + cell.y * this.cell + this.cell / 2,
+      cell.letter ?? "",
+      cell.difficulty ?? "easy",
+      this.cell * vis.pct * 0.9
+    );
+    gem.setDepth(2);
+    gem.setScrollFactor(0);
+    if (reveal) gem.revealLetter(this.cell * 0.35);
+    this.gemTexts.push(gem.container);
+  }
+
+  private redrawBoard(): void {
+    const g = this.tileGraphics;
+    if (!g) return;
+    g.clear();
+    const gap = Math.max(1, this.cell * 0.04);
+    const size = this.cell - gap;
+    for (const cell of this.grid.cells) {
+      const x = this.boardX + cell.x * this.cell + gap / 2;
+      const y = this.boardY + cell.y * this.cell + gap / 2;
+      const palette = MINE_ROCK[cell.soil];
+      const broken = cell.state !== "stone";
+      // Base block: solid stone, or broken rock once dug.
+      g.fillStyle(broken ? palette.dug : palette.rock, 1);
+      g.fillRect(x, y, size, size);
+      // Top highlight for a chunky Terraria block feel
+      g.fillStyle(palette.speck, broken ? 0.15 : 0.35);
+      g.fillRect(x, y, size, size * 0.12);
+      // Left/right shading
+      g.fillStyle(palette.border, 0.5);
+      g.fillRect(x, y + size * 0.1, size * 0.1, size * 0.9);
+      g.fillRect(x + size * 0.9, y + size * 0.1, size * 0.1, size * 0.9);
+      // Ore vein flecks only remain in intact stone.
+      if (cell.state === "stone") {
+        const oreCount = cell.soil === 2 ? 3 : cell.soil === 1 ? 2 : 1;
+        for (let s = 0; s < oreCount; s++) {
+          const sx = x + ((cell.x * 31 + cell.y * 17 + s * 47) % Math.max(1, Math.floor(size * 0.7)));
+          const sy = y + size * 0.35 + s * size * 0.28;
+          g.fillStyle(palette.ore, 0.9);
+          g.fillRect(sx, sy, size * 0.09, size * 0.09);
         }
+      }
+      // Lantern-lit glow inside exposed/dug cells.
+      if (cell.state !== "stone") {
+        g.fillStyle(DUG_LIGHT, 0.18);
+        g.fillCircle(x + size / 2, y + size / 2, size * 0.3);
+      }
+    }
+    // Rebuild gems: an embedded gem (letter still hidden) shows only for cells
+    // whose stone has been broken but whose gem has not yet been dug.
+    for (const c of this.gemTexts) c.destroy();
+    this.gemTexts = [];
+    for (const cell of this.grid.cells) {
+      if (cell.state !== "gem") continue;
+      this.makeGem(cell, false);
+    }
+  }
 
-        for (let x = 0; x < GAME.WORLD_SIZE; x += tileSize) {
-            for (let y = 0; y < GAME.WORLD_SIZE; y += tileSize) {
-                this.add.image(x, y, tileKey).setOrigin(0, 0).setDepth(-100);
-            }
+  private placePlayer(): void {
+    const px = this.boardX + (this.playerX + 0.5) * this.cell;
+    const py = this.boardY + (this.playerY + 0.5) * this.cell;
+    this.player.setPosition(px, py - this.cell * 0.15);
+    this.playerGlow.setPosition(px, py);
+    const standing = this.standingCell();
+    this.targetMarker.setPosition(
+      this.boardX + (standing.x + 0.5) * this.cell,
+      this.boardY + (standing.y + 0.5) * this.cell
+    );
+  }
+
+  private buildHUD(): void {
+    const W = this.scale.width;
+    const pad = 10;
+    this.hpText = this.add.text(pad, pad, "", { fontFamily: FONT, fontSize: 16, color: "#ffffff" }).setDepth(10).setScrollFactor(0);
+    this.scoreText = this.add.text(pad, pad + 22, "", { fontFamily: FONT, fontSize: 13, color: "#fde68a" }).setDepth(10).setScrollFactor(0);
+    this.roundText = this.add
+      .text(W / 2, pad, "", { fontFamily: FONT, fontSize: 15, color: "#93c5fd", align: "center" })
+      .setOrigin(0.5, 0)
+      .setDepth(10)
+      .setScrollFactor(0);
+    this.updateHUD();
+  }
+
+  private updateHUD(): void {
+    this.hpText.setText(`HP ${this.state.health}/${MAX_HEALTH}`);
+    this.scoreText.setText(`Score ${this.state.score}`);
+    this.roundText.setText(`ROUND ${this.state.round + 1}  •  WORDS ${this.state.wordsCompleted}/${WIN_GOAL}`);
+  }
+
+  private goalColor(word: DeckWord): number {
+    return word.difficulty === "hard" ? HARD_LETTER_COLOR : EASY_LETTER_COLOR;
+  }
+
+  /** Selects goal `index`; instantly completes it if its letters are already collected. */
+  private selectGoal(index: number): void {
+    const goals = this.state.goals();
+    const goal = goals[index];
+    if (!goal) return;
+    this.state.selectWord(goal.text);
+    const done = this.state.completeSelected(this.t);
+    if (done) this.onWordComplete(done);
+    else this.rebuildGoalsPanel();
+  }
+
+  private rebuildGoalsPanel(): void {
+    for (const c of this.goalCards) c.destroy();
+    this.goalCards = [];
+    const goals = this.state.goals();
+    if (this.scale.width > 800) this.buildGoalsColumn(goals);
+    else this.buildGoalsStrip(goals);
+  }
+
+  private buildGoalsColumn(goals: readonly DeckWord[]): void {
+    const W = this.scale.width;
+    const cx = W - this.panelW / 2;
+    const topY = 58;
+    const cardW = this.panelW - 24;
+    const cardH = 50;
+    const gap = 7;
+    const startY = topY;
+    goals.forEach((g, i) => {
+      this.makeGoalCard(cx, startY + i * (cardH + gap), cardW, cardH, i, g);
+    });
+  }
+
+  private buildGoalsStrip(goals: readonly DeckWord[]): void {
+    const W = this.scale.width;
+    const pad = 6;
+    const cols = 5;
+    const cardW = (W - pad * 2) / cols;
+    const cardH = Math.max(34, Math.min(46, this.goalsH * 0.34));
+    const topY = 50;
+    goals.forEach((g, i) => {
+      const row = Math.floor(i / cols);
+      const col = i % cols;
+      const x = pad + cardW / 2 + col * cardW;
+      const y = topY + row * (cardH + 4);
+      this.makeGoalCard(x, y, cardW - 4, cardH, i, g);
+    });
+  }
+
+  private makeGoalCard(x: number, y: number, w: number, h: number, index: number, goal: DeckWord): void {
+    const compact = this.scale.width <= 800;
+    const isSelected = this.state.selectedWord() === goal;
+    const cardColor = this.goalColor(goal);
+    const bg = this.add.rectangle(x, y, w, h, isSelected ? 0x2f6bff : 0xffffff, isSelected ? 0.4 : 0.08);
+    bg.setStrokeStyle(2, isSelected ? 0xffffff : cardColor, isSelected ? 0.95 : 0.55);
+    bg.setInteractive({ useHandCursor: true });
+    bg.on("pointerdown", () => this.selectGoal(index));
+    const left = x - w / 2 + (compact ? 6 : 12);
+    const wordY = y - (compact ? 7 : 9);
+    const idxText = this.add
+      .text(left, wordY, `${index + 1}`, { fontFamily: FONT, fontSize: compact ? 10 : 13, color: "#94a3b8" })
+      .setOrigin(0, 0.5);
+    // The English word stays hidden until fully spelled: show a length hint.
+    const blanks = goal.letters.map(() => "_").join(" ");
+    const wordText = this.add
+      .text(left + (compact ? 15 : 28), wordY, blanks, {
+        fontFamily: FONT,
+        fontSize: compact ? 12 : 16,
+        color: "#ffffff",
+        fontStyle: "bold",
+      })
+      .setOrigin(0, 0.5);
+    const thaiText = this.add
+      .text(left, y + (compact ? 9 : 11), goal.thai, {
+        fontFamily: FONT,
+        fontSize: compact ? 10 : 12,
+        color: "#cbd5e1",
+      })
+      .setOrigin(0, 0.5);
+    const progText = this.add
+      .text(x + w / 2 - (compact ? 6 : 12), y, `${this.state.collectedFor(goal)}/${goal.letters.length}`, {
+        fontFamily: FONT,
+        fontSize: compact ? 11 : 13,
+        color: `#${cardColor.toString(16)}`,
+        fontStyle: "bold",
+      })
+      .setOrigin(1, 0.5);
+    const c = this.add.container(0, 0, [bg, idxText, wordText, thaiText, progText]);
+    c.setDepth(9).setScrollFactor(0);
+    this.goalCards.push(c);
+  }
+
+  private setupInput(): void {
+    this.cursors = this.input.keyboard!.createCursorKeys();
+    this.wasd = {
+      W: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      A: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+      S: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+      D: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+    };
+    this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.spaceKey.on("down", () => this.digStanding(), this);
+
+    const goalKeyCodes = [
+      Phaser.Input.Keyboard.KeyCodes.ONE,
+      Phaser.Input.Keyboard.KeyCodes.TWO,
+      Phaser.Input.Keyboard.KeyCodes.THREE,
+      Phaser.Input.Keyboard.KeyCodes.FOUR,
+      Phaser.Input.Keyboard.KeyCodes.FIVE,
+      Phaser.Input.Keyboard.KeyCodes.SIX,
+      Phaser.Input.Keyboard.KeyCodes.SEVEN,
+      Phaser.Input.Keyboard.KeyCodes.EIGHT,
+      Phaser.Input.Keyboard.KeyCodes.NINE,
+      Phaser.Input.Keyboard.KeyCodes.ZERO,
+    ];
+    goalKeyCodes.forEach((code, i) => {
+      const key = this.input.keyboard!.addKey(code);
+      key.on("down", () => this.selectGoal(i), this);
+      this.goalKeys.push(key);
+    });
+
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (pointer.downElement !== this.game.canvas) return;
+      // Pointer only steers; a tap later digs if it is the miner's own block.
+      this.dragStart = { x: pointer.x, y: pointer.y };
+      this.dragVector.x = 0;
+      this.dragVector.y = 0;
+    });
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      if (!this.dragStart) return;
+      const r = Math.max(30, this.cell * 2.5);
+      let dx = pointer.x - this.dragStart.x;
+      let dy = pointer.y - this.dragStart.y;
+      const len = Math.hypot(dx, dy);
+      if (len > r) {
+        dx = (dx / len) * r;
+        dy = (dy / len) * r;
+      }
+      this.dragVector.x = dx / r;
+      this.dragVector.y = dy / r;
+    });
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      if (this.dragStart) {
+        const dx = pointer.x - this.dragStart.x;
+        const dy = pointer.y - this.dragStart.y;
+        const tapThreshold = Math.max(10, this.cell * 0.35);
+        if (Math.hypot(dx, dy) <= tapThreshold) {
+          this.tryDigAtPointer(pointer);
         }
+      }
+      this.dragStart = null;
+      this.dragVector.x = 0;
+      this.dragVector.y = 0;
+    });
+    this.input.on("pointercancel", () => {
+      this.dragStart = null;
+      this.dragVector.x = 0;
+      this.dragVector.y = 0;
+    });
+  }
+
+  /** The grid cell the miner currently stands on. */
+  private standingCell(): { x: number; y: number } {
+    return {
+      x: Phaser.Math.Clamp(Math.floor(this.playerX), 0, COLS - 1),
+      y: Phaser.Math.Clamp(Math.floor(this.playerY), 0, ROWS - 1),
+    };
+  }
+
+  /** Digs the block the miner is standing on (Spacebar). */
+  private digStanding(): void {
+    const c = this.standingCell();
+    this.digAt(c.x, c.y);
+  }
+
+  /** A tap digs only the block the miner is standing on; elsewhere it does nothing. */
+  private tryDigAtPointer(pointer: Phaser.Input.Pointer): void {
+    const cx = Math.floor((pointer.x - this.boardX) / this.cell);
+    const cy = Math.floor((pointer.y - this.boardY) / this.cell);
+    if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS) return;
+    const standing = this.standingCell();
+    if (cx === standing.x && cy === standing.y) this.digAt(cx, cy);
+  }
+
+  private nudgeFacing(cx: number): void {
+    if (cx >= this.playerX) this.facing = "right";
+    else this.facing = "left";
+    this.player.setFacing(this.facing);
+  }
+
+  private digAt(x: number, y: number): void {
+    const result = this.grid.dig(x, y);
+    if (!result) return;
+    // Swing the pickaxe and show Terraria-style debris.
+    const cellCenterX = this.boardX + x * this.cell + this.cell / 2;
+    const cellCenterY = this.boardY + y * this.cell + this.cell / 2;
+    this.nudgeFacing(x);
+    this.player.swing();
+    spawnDigParticles(this, cellCenterX, cellCenterY, this.cell, result.cell.soil);
+    if (result.type === "letter") {
+      // Second dig: the hidden letter pops out of the gem clearly.
+      const done = this.state.collectLetter(result.letter, this.t);
+      const vis = letterVisual(result.cell.difficulty ?? "easy");
+      const gem = new Gem(this, cellCenterX, cellCenterY, result.letter, result.cell.difficulty ?? "easy", this.cell * vis.pct * 0.9);
+      gem.setScrollFactor(0);
+      spawnGemPop(this, gem);
+      gem.revealLetter(140);
+      this.tweens.add({
+        targets: gem.container,
+        y: cellCenterY - this.cell * 0.7,
+        alpha: 0,
+        duration: 650,
+        ease: "Quad.easeOut",
+        delay: 650,
+        onComplete: () => gem.destroy(),
+      });
+      this.redrawBoard();
+      if (done) {
+        this.onWordComplete(done);
+      }
+    } else {
+      // First dig (or an empty cell): stone crumbles, revealing a gem or a hole.
+      this.redrawBoard();
     }
+    this.updateHUD();
+  }
 
-    private generateOceanTile(key: string, size: number) {
-        const g = this.add.graphics();
+  private onWordComplete(word: DeckWord): void {
+    this.rebuildGoalsPanel();
+    this.spawnAuraToast(word);
+    const line = this.add
+      .text(this.player.container.x, this.player.container.y - this.cell, `✓ ${word.text}`, {
+        fontFamily: FONT,
+        fontSize: `${Math.round(this.cell * 0.5)}px`,
+        color: "#a3ff4d",
+        fontStyle: "bold",
+        stroke: "#000",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(8)
+      .setScrollFactor(0);
+    this.tweens.add({ targets: line, y: line.y - this.cell, alpha: 0, duration: 900, onComplete: () => line.destroy() });
+    this.checkEnd();
+  }
 
-        g.fillGradientStyle(0x0a0a2e, 0x0a0a2e, 0x0d1a3a, 0x0d1a3a, 1);
-        g.fillRect(0, 0, size, size);
+  private spawnAuraToast(word: DeckWord): void {
+    const W = this.scale.width;
+    const txt = this.add
+      .text(W / 2, this.boardY - 8, `${word.text}  AURA 10s!`, {
+        fontFamily: FONT,
+        fontSize: `${Math.max(14, this.cell * 0.4)}px`,
+        color: "#fff3a8",
+        fontStyle: "bold",
+        stroke: "#000",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(12)
+      .setScrollFactor(0);
+    this.tweens.add({ targets: txt, alpha: 0, y: txt.y - 24, duration: 1200, delay: 800, onComplete: () => txt.destroy() });
+    this.cameras.main.flash(160, 255, 250, 220);
+    void word;
+  }
 
-        for (let i = 0; i < 6; i++) {
-            const rx = (i * 67 + 13) % size;
-            const ry = (i * 89 + 31) % size;
-            const rw = 20 + (i * 17) % 30;
-            const rh = 15 + (i * 23) % 25;
-            g.fillStyle(0x1a1a2a, 0.6);
-            g.fillEllipse(rx, ry, rw, rh);
+  update(time: number, delta: number): void {
+    if (!this.state) return;
+    this.t += delta;
+    this.checkBoardExhausted();
+    const moving = this.handleMovement(delta);
+    this.player.update(time, moving);
+    this.player.tickSwing();
+    this.refreshPlayerVisual(delta);
+    this.renderLasers(delta);
+    this.updateHUD();
+  }
+
+  /**
+   * Rotates the goal words once the mine floor runs out of letters. There is no
+   * time limit; a round simply ends when every letter has been dug. Unfinished
+   * words still return as goals, and collected letters stay in the bag.
+   */
+  private checkBoardExhausted(): void {
+    if (this.boardRotated) return;
+    if (this.grid.remainingLetters !== 0) return;
+    if (this.state.hasWon() || this.state.isOver()) return;
+    this.boardRotated = true;
+    this.state.rotateGoals();
+    this.spawnRoundToast();
+    this.rebuildGoalsPanel();
+  }
+
+  private spawnRoundToast(): void {
+    const W = this.scale.width;
+    const txt = this.add
+      .text(W / 2, this.boardY - 8, "NEW GOALS — PICK A WORD!", {
+        fontFamily: FONT,
+        fontSize: Math.max(14, this.cell * 0.4),
+        color: "#fff3a8",
+        fontStyle: "bold",
+        stroke: "#000",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(12)
+      .setScrollFactor(0);
+    this.tweens.add({ targets: txt, alpha: 0, y: txt.y - 24, duration: 1200, delay: 900, onComplete: () => txt.destroy() });
+    this.cameras.main.flash(140, 147, 197, 255);
+  }
+
+  private handleMovement(delta: number): boolean {
+    let vx = 0;
+    let vy = 0;
+    if (this.cursors.left.isDown || this.wasd.A.isDown) vx -= 1;
+    if (this.cursors.right.isDown || this.wasd.D.isDown) vx += 1;
+    if (this.cursors.up.isDown || this.wasd.W.isDown) vy -= 1;
+    if (this.cursors.down.isDown || this.wasd.S.isDown) vy += 1;
+    if ((this.dragVector.x !== 0 || this.dragVector.y !== 0) && !this.state.isOver()) {
+      vx = this.dragVector.x;
+      vy = this.dragVector.y;
+    }
+    if (vx !== 0 && vy !== 0) {
+      const inv = 1 / Math.hypot(vx, vy);
+      vx *= inv;
+      vy *= inv;
+    }
+    if (vx > 0.01) this.facing = "right";
+    else if (vx < -0.01) this.facing = "left";
+    this.player.setFacing(this.facing);
+    const step = PLAYER_SPEED * (delta / 1000) * this.cell;
+    this.playerX = Phaser.Math.Clamp(this.playerX + (vx * step) / this.cell, 0, COLS - 1);
+    this.playerY = Phaser.Math.Clamp(this.playerY + (vy * step) / this.cell, 0, ROWS - 1);
+    this.placePlayer();
+    return vx !== 0 || vy !== 0;
+  }
+
+  private refreshPlayerVisual(delta: number): void {
+    const aura = this.state.isWordAuraActive(this.t);
+    this.playerGlow.setVisible(aura);
+    if (aura) {
+      this.playerGlow.setFillStyle(0xffffff, 0.18 + 0.1 * Math.sin(this.t / 120));
+    }
+    const invuln = this.state.isInvulnerable(this.t);
+    if (invuln && !aura) {
+      this.player.setAlpha(0.45 + 0.3 * Math.sin(this.t / 60));
+    } else {
+      this.player.setAlpha(1);
+    }
+  }
+
+  private renderLasers(_delta: number): void {
+    const g = this.laserGraphics;
+    g.clear();
+    this.lasers.ensureUpTo(this.t);
+    const px = (this.playerX + 0.5) / COLS;
+    const py = (this.playerY + 0.5) / ROWS;
+    for (const ev of this.lasers.activeAt(this.t)) {
+      if (!isVisible(ev, this.t)) continue;
+      const offset = sweepOffset(ev, this.t);
+      if (isGuiding(ev, this.t)) {
+        this.drawBeam(g, ev.direction, offset ?? ev.sweepFrom, 0x60c8ff, 0.3, 0.02);
+      } else if (offset !== null) {
+        this.drawBeam(g, ev.direction, offset, 0xff3d6e, 0.9, BEAM_THICKNESS);
+        if (hitsPoint(ev, this.t, px, py, BEAM_THICKNESS)) {
+          if (this.state.takeHit(this.t)) {
+            this.onLaserHit();
+          }
         }
-
-        for (let i = 0; i < 4; i++) {
-            const rx = (i * 97 + 47) % size;
-            const ry = (i * 73 + 19) % size;
-            g.fillStyle(0x2a1a3a, 0.5);
-            g.fillCircle(rx, ry, 8 + (i * 11) % 12);
-            g.fillStyle(0x3a2a4a, 0.4);
-            g.fillCircle(rx - 3, ry - 2, 5 + (i * 7) % 8);
-        }
-
-        for (let i = 0; i < 3; i++) {
-            const sx = (i * 131 + 53) % size;
-            const sy = (i * 107 + 29) % size;
-            g.lineStyle(2, 0x1a3a1a, 0.4);
-            g.beginPath();
-            g.moveTo(sx, sy);
-            for (let j = 1; j <= 4; j++) {
-                const wx = sx + Math.sin(j * 1.5) * 8;
-                const wy = sy + j * 12;
-                g.lineTo(wx, wy);
-            }
-            g.strokePath();
-        }
-
-        for (let i = 0; i < 12; i++) {
-            const px = (i * 53 + 7) % size;
-            const py = (i * 41 + 11) % size;
-            g.fillStyle(0xffffff, 0.15);
-            g.fillCircle(px, py, 1 + (i % 2));
-        }
-
-        g.generateTexture(key, size, size);
-        g.destroy();
+      }
     }
+  }
 
-    private createGrid() {
-        const g = this.add.graphics();
-        g.setDepth(-99);
-        g.lineStyle(1, PALETTE.BG_MID, 0.3);
-        for (let x = 0; x <= GAME.WORLD_SIZE; x += this.gridSize) {
-            g.moveTo(x, 0);
-            g.lineTo(x, GAME.WORLD_SIZE);
-        }
-        for (let y = 0; y <= GAME.WORLD_SIZE; y += this.gridSize) {
-            g.moveTo(0, y);
-            g.lineTo(GAME.WORLD_SIZE, y);
-        }
-        g.strokePath();
+  private onLaserHit(): void {
+    this.cameras.main.shake(120, 0.01);
+    this.player.swing();
+    this.updateHUD();
+    this.checkEnd();
+  }
+
+  private drawBeam(g: Phaser.GameObjects.Graphics, dir: LaserEvent["direction"], offset: number, color: number, alpha: number, width: number): void {
+    g.lineStyle(Math.max(2, this.boardW * width), color, alpha);
+    const bx = this.boardX;
+    const by = this.boardY;
+    const bw = this.boardW;
+    const bh = this.boardH;
+    if (dir === "vertical") {
+      const x = bx + offset * bw;
+      g.lineBetween(x, by, x, by + bh);
+    } else if (dir === "horizontal") {
+      const y = by + offset * bh;
+      g.lineBetween(bx, y, bx + bw, y);
+    } else if (dir === "diag-left") {
+      const c = (offset * Math.sqrt(bw * bw + bh * bh)) / 2;
+      const pts = this.clipLine([bx, by + bh], [bx + bw, by], bx, by, bw, bh, c, dir);
+      g.lineBetween(pts.x1, pts.y1, pts.x2, pts.y2);
+    } else {
+      const c = (offset * Math.sqrt(bw * bw + bh * bh)) / 2;
+      const pts = this.clipLine([bx, by], [bx + bw, by + bh], bx, by, bw, bh, c, dir);
+      g.lineBetween(pts.x1, pts.y1, pts.x2, pts.y2);
     }
+  }
 
-    private createOceanAnimations() {
-        this.oceanParticles = [];
-        for (let i = 0; i < 20; i++) {
-            const particle = this.add.circle(
-                Phaser.Math.Between(0, GAME.WIDTH),
-                Phaser.Math.Between(0, GAME.HEIGHT),
-                Phaser.Math.Between(1, 3),
-                0xffffff,
-                Phaser.Math.FloatBetween(0.05, 0.2)
-            );
-            particle.setScrollFactor(0).setDepth(-95);
-            (particle as any).speedY = Phaser.Math.FloatBetween(-0.3, -0.1);
-            (particle as any).speedX = Phaser.Math.FloatBetween(-0.1, 0.1);
-            (particle as any).wobble = Phaser.Math.FloatBetween(0, Math.PI * 2);
-            this.oceanParticles.push(particle);
-        }
+  private clipLine(a: number[], b: number[], bx: number, by: number, bw: number, bh: number, c0: number, dir: string): { x1: number; y1: number; x2: number; y2: number } {
+    const sign = dir === "diag-left" ? -1 : 1;
+    const dxb = b[0] - a[0];
+    const dyb = b[1] - a[1];
+    const len = Math.hypot(dxb, dyb) || 1;
+    const ux = dxb / len;
+    const uy = dyb / len;
+    const nx = -uy;
+    const ny = ux;
+    const px0 = a[0] + nx * c0 * sign;
+    const py0 = a[1] + ny * c0 * sign;
+    return this.extendLine(px0, py0, ux, uy, bx, by, bw, bh);
+  }
 
-        this.lightRays = [];
-        for (let i = 0; i < 4; i++) {
-            const ray = this.add.graphics();
-            ray.setScrollFactor(0).setDepth(-96);
-            const baseX = 100 + i * 200;
-            const baseAlpha = Phaser.Math.FloatBetween(0.02, 0.06);
-            (ray as any).baseX = baseX;
-            (ray as any).baseAlpha = baseAlpha;
-            (ray as any).phase = i * 0.8;
-            this.drawLightRay(ray, baseX, baseAlpha);
-            this.lightRays.push(ray);
-        }
+  private extendLine(x0: number, y0: number, ux: number, uy: number, bx: number, by: number, bw: number, bh: number): { x1: number; y1: number; x2: number; y2: number } {
+    const half = bw + bh;
+    const candidates: { x: number; y: number }[] = [];
+    for (const t of [-half, half]) {
+      candidates.push({ x: x0 + ux * t, y: y0 + uy * t });
     }
+    const clipped = candidates.filter((p) => p.x >= bx - 1 && p.x <= bx + bw + 1 && p.y >= by - 1 && p.y <= by + bh + 1);
+    if (clipped.length >= 2) return { x1: clipped[0].x, y1: clipped[0].y, x2: clipped[1].x, y2: clipped[1].y };
+    const p1 = this.clampToRect(x0 + ux * -half, y0 + uy * -half, bx, by, bw, bh);
+    const p2 = this.clampToRect(x0 + ux * half, y0 + uy * half, bx, by, bw, bh);
+    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+  }
 
-    private drawLightRay(ray: Phaser.GameObjects.Graphics, baseX: number, alpha: number) {
-        ray.clear();
-        ray.fillStyle(0x4488ff, alpha);
-        ray.beginPath();
-        ray.moveTo(baseX - 20, 0);
-        ray.lineTo(baseX + 20, 0);
-        ray.lineTo(baseX + 60, GAME.HEIGHT);
-        ray.lineTo(baseX - 60, GAME.HEIGHT);
-        ray.closePath();
-        ray.fillPath();
+  private clampToRect(x: number, y: number, bx: number, by: number, bw: number, bh: number): { x: number; y: number } {
+    return { x: Phaser.Math.Clamp(x, bx, bx + bw), y: Phaser.Math.Clamp(y, by, by + bh) };
+  }
+
+  private checkEnd(): void {
+    if (this.state.hasWon()) {
+      this.scene.start("Win");
+    } else if (this.state.isOver()) {
+      this.scene.start("GameOver");
     }
-
-    private createUI() {
-        const pad = UI.PADDING;
-
-        this.scoreText = this.add.text(pad, pad, 'Score: 0', {
-            fontSize: UI.FONT_SIZE_MD,
-            color: PALETTE.UI_TEXT,
-            fontFamily: UI.FONT_FAMILY,
-        }).setScrollFactor(0).setDepth(100);
-
-        this.timeText = this.add.text(pad, pad + 28, 'Time: 0:00', {
-            fontSize: UI.FONT_SIZE_SM,
-            color: '#aaaaaa',
-            fontFamily: UI.FONT_FAMILY,
-        }).setScrollFactor(0).setDepth(100);
-
-        this.killText = this.add.text(pad, pad + 50, 'Kills: 0', {
-            fontSize: UI.FONT_SIZE_SM,
-            color: '#aaaaaa',
-            fontFamily: UI.FONT_FAMILY,
-        }).setScrollFactor(0).setDepth(100);
-
-        const pauseBtnX = GAME.WIDTH - pad - 16;
-        const pauseBtnY = pad + 16;
-        const pauseBtn = this.add.container(pauseBtnX, pauseBtnY);
-        pauseBtn.setScrollFactor(0).setDepth(100);
-
-        const pauseBtnBg = this.add.circle(0, 0, 18, PALETTE.UI_BG, 0.8);
-        pauseBtnBg.setStrokeStyle(2, 0x44aaff);
-        pauseBtn.add(pauseBtnBg);
-
-        const pauseIcon = this.add.text(0, 0, '⏸', {
-            fontSize: '18px',
-            color: '#ffffff',
-        }).setOrigin(0.5);
-        pauseBtn.add(pauseIcon);
-
-        pauseBtnBg.setInteractive({ useHandCursor: true });
-        pauseBtnBg.on('pointerover', () => pauseBtnBg.setFillStyle(0x223355, 0.9));
-        pauseBtnBg.on('pointerout', () => pauseBtnBg.setFillStyle(PALETTE.UI_BG, 0.8));
-        pauseBtnBg.on('pointerdown', () => this.togglePause());
-
-        this.healthBarBg = this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT - 40, 200, 12, 0x333333)
-            .setScrollFactor(0).setDepth(100);
-        this.healthBar = this.add.rectangle(GAME.WIDTH / 2 - 100, GAME.HEIGHT - 40, 200, 12, 0x44ff44)
-            .setOrigin(0, 0.5).setScrollFactor(0).setDepth(100);
-
-        this.add.text(GAME.WIDTH / 2 - 115, GAME.HEIGHT - 40, 'HP', {
-            fontSize: UI.FONT_SIZE_SM,
-            color: '#44ff44',
-            fontFamily: UI.FONT_FAMILY,
-            fontStyle: 'bold',
-        }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
-
-        this.xpBarBg = this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT - 22, 200, 8, 0x333333)
-            .setScrollFactor(0).setDepth(100);
-        this.xpBar = this.add.rectangle(GAME.WIDTH / 2 - 100, GAME.HEIGHT - 22, 0, 8, 0xffff00)
-            .setOrigin(0, 0.5).setScrollFactor(0).setDepth(100);
-
-        this.add.text(GAME.WIDTH / 2 - 115, GAME.HEIGHT - 22, 'EXP', {
-            fontSize: UI.FONT_SIZE_SM,
-            color: '#ffff00',
-            fontFamily: UI.FONT_FAMILY,
-            fontStyle: 'bold',
-        }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
-
-        this.levelText = this.add.text(GAME.WIDTH / 2, GAME.HEIGHT - 56, 'Lv 1', {
-            fontSize: UI.FONT_SIZE_MD,
-            color: PALETTE.UI_ACCENT,
-            fontFamily: UI.FONT_FAMILY,
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(100);
-    }
-
-    private createPauseMenu() {
-        const cx = GAME.WIDTH / 2;
-        const cy = GAME.HEIGHT / 2;
-
-        this.pauseContainer = this.add.container(0, 0);
-        this.pauseContainer.setScrollFactor(0).setDepth(300);
-        this.pauseContainer.setVisible(false);
-
-        this.pauseOverlay = this.add.rectangle(cx, cy, GAME.WIDTH, GAME.HEIGHT, 0x000000, 0.7);
-        this.pauseContainer.add(this.pauseOverlay);
-
-        this.pauseTitle = this.add.text(cx, cy - 120, 'PAUSED', {
-            fontSize: UI.FONT_SIZE_XL,
-            color: '#ffffff',
-            fontFamily: UI.FONT_FAMILY,
-            fontStyle: 'bold',
-        }).setOrigin(0.5);
-        this.pauseContainer.add(this.pauseTitle);
-
-        this.continueBtn = this.createPauseButton(cx - 100, cy, 'Continue', () => this.resumeGame());
-        this.pauseContainer.add(this.continueBtn);
-
-        this.restartBtn = this.createPauseButton(cx + 100, cy, 'Restart', () => this.restartGame());
-        this.pauseContainer.add(this.restartBtn);
-
-        const mainMenuBtn = this.createPauseButton(cx, cy + 65, 'Main Menu', () => this.goToMainMenu());
-        this.pauseContainer.add(mainMenuBtn);
-
-        this.pauseHint = this.add.text(cx, cy + 110, 'Press SPACE to resume', {
-            fontSize: UI.FONT_SIZE_SM,
-            color: '#aaaaaa',
-            fontFamily: UI.FONT_FAMILY,
-        }).setOrigin(0.5);
-        this.pauseContainer.add(this.pauseHint);
-    }
-
-    private createPauseButton(x: number, y: number, label: string, callback: () => void): Phaser.GameObjects.Container {
-        const container = this.add.container(x, y);
-
-        const bg = this.add.rectangle(0, 0, 150, 50, PALETTE.UI_BG, 0.9);
-        bg.setStrokeStyle(2, 0x44aaff);
-        container.add(bg);
-
-        const text = this.add.text(0, 0, label, {
-            fontSize: UI.FONT_SIZE_MD,
-            color: PALETTE.UI_TEXT,
-            fontFamily: UI.FONT_FAMILY,
-        }).setOrigin(0.5);
-        container.add(text);
-
-        bg.setInteractive({ useHandCursor: true });
-        bg.on('pointerover', () => bg.setFillStyle(0x223355));
-        bg.on('pointerout', () => bg.setFillStyle(PALETTE.UI_BG));
-        bg.on('pointerdown', callback);
-
-        return container;
-    }
-
-    private togglePause() {
-        if (gameState.gameOver) return;
-        if (gameState.paused) {
-            this.resumeGame();
-        } else {
-            this.pauseGame();
-        }
-    }
-
-    private pauseGame() {
-        gameState.paused = true;
-        this.physics.world.pause();
-        this.showPauseMenu();
-        EventBus.emit(Events.GAME_PAUSE);
-    }
-
-    private resumeGame() {
-        gameState.paused = false;
-        this.physics.world.resume();
-        this.hidePauseMenu();
-        EventBus.emit(Events.GAME_RESUME);
-    }
-
-    private restartGame() {
-        gameState.paused = false;
-        this.physics.world.resume();
-        this.hidePauseMenu();
-        EventBus.emit(Events.GAME_RESTART);
-        this.scene.restart();
-    }
-
-    private goToMainMenu() {
-        gameState.paused = false;
-        this.physics.world.resume();
-        this.hidePauseMenu();
-        EventBus.emit(Events.GAME_RESTART);
-        this.scene.start('Title');
-    }
-
-    private showPauseMenu() {
-        this.pauseContainer.setVisible(true);
-    }
-
-    private hidePauseMenu() {
-        this.pauseContainer.setVisible(false);
-    }
-
-    update(time: number, delta: number) {
-        if (gameState.gameOver || gameState.paused) return;
-
-        gameState.elapsedTime += delta;
-
-        this.handleInput();
-        this.player.update(time, delta);
-        this.spawnSystem.update(time, delta);
-        this.xpGems.updateAll(this.player.x, this.player.y, delta);
-
-        this.typingSystem.update(time, delta);
-        this.typingUI.update(
-            this.typingSystem.getCurrentTarget(),
-            this.typingSystem.getTypedCount()
-        );
-
-        this.updateUI();
-        this.updateAutoShoot(delta);
-        this.updateEnemyMovement();
-        this.updateAutoBullets(delta);
-        this.diamonds.updateAll(time, delta);
-        this.updateDiamondEffect(delta);
-        this.updateOceanAnimations(time, delta);
-    }
-
-    private handleInput() {
-        let vx = 0;
-        let vy = 0;
-        const speed = gameState.playerSpeed;
-
-        if (this.cursors.left.isDown || this.wasd.A.isDown) vx -= speed;
-        if (this.cursors.right.isDown || this.wasd.D.isDown) vx += speed;
-        if (this.cursors.up.isDown || this.wasd.W.isDown) vy -= speed;
-        if (this.cursors.down.isDown || this.wasd.S.isDown) vy += speed;
-
-        if (vx !== 0 && vy !== 0) {
-            vx *= 0.707;
-            vy *= 0.707;
-        }
-
-        this.player.body.setVelocity(vx, vy);
-        this.player.setDirection(vx, vy);
-    }
-
-    private updateUI() {
-        this.scoreText.setText(`Score: ${gameState.score}`);
-        this.killText.setText(`Kills: ${gameState.killCount}`);
-
-        const totalSec = Math.floor(gameState.elapsedTime / 1000);
-        const min = Math.floor(totalSec / 60);
-        const sec = totalSec % 60;
-        this.timeText.setText(`Time: ${min}:${sec.toString().padStart(2, '0')}`);
-
-        const hpRatio = gameState.health / gameState.maxHealth;
-        this.healthBar.width = 200 * hpRatio;
-
-        const xpRatio = gameState.xp / gameState.xpToNext;
-        this.xpBar.width = 200 * xpRatio;
-
-        this.levelText.setText(`Lv ${gameState.level}`);
-    }
-
-    private updateAutoShoot(delta: number) {
-        const baseRate = 1200;
-        const wpmBonus = gameState.typingWPM * 8;
-        const shootRate = Math.max(300, baseRate - wpmBonus);
-
-        this.autoShootTimer += delta;
-        if (this.autoShootTimer >= shootRate) {
-            this.autoShootTimer = 0;
-            this.fireAutoBullet();
-        }
-    }
-
-    private fireAutoBullet() {
-        const allEnemies = this.enemies.getActiveEnemies();
-        const validTargets = allEnemies.filter(e => 
-            e.enemyType === 'tank' || e.enemyType === 'elite'
-        );
-        if (validTargets.length === 0) return;
-
-        const target = validTargets[Phaser.Math.Between(0, validTargets.length - 1)];
-        if (!target || !target.active) return;
-
-        const bullet = this.autoBullets.get(this.player.x, this.player.y) as Phaser.GameObjects.Arc;
-        if (!bullet) return;
-
-        bullet.setPosition(this.player.x, this.player.y);
-        bullet.setRadius(5);
-        bullet.setFillStyle(0xff44ff, 1);
-        bullet.setActive(true);
-        bullet.setVisible(true);
-        bullet.setDepth(11);
-
-        const body = bullet.body as Phaser.Physics.Arcade.Body;
-        body.enable = true;
-        body.setCircle(5);
-
-        const dx = target.x - this.player.x;
-        const dy = target.y - this.player.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const speed = 400;
-
-        if (dist > 0) {
-            body.setVelocity((dx / dist) * speed, (dy / dist) * speed);
-        }
-
-        (bullet as any).damage = 15 + Math.floor(gameState.typingWPM / 5);
-        (bullet as any).lifetime = 2500;
-        (bullet as any).age = 0;
-    }
-
-    private updateEnemyMovement() {
-        const px = this.player.x;
-        const py = this.player.y;
-        const adaptiveMult = Math.min(
-            ENEMY.SPEED_MAX_MULT,
-            ENEMY.SPEED_MIN_MULT + gameState.typingWPM / ENEMY.SPEED_WPM_DIVISOR
-        );
-
-        this.enemies.getChildren().forEach(child => {
-            const enemy = child as any;
-            if (!enemy.active || !enemy.body) return;
-
-            const dx = px - enemy.x;
-            const dy = py - enemy.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > 1) {
-                const speed = (enemy.speed || ENEMY.BASE_SPEED) * adaptiveMult;
-                enemy.body.velocity.x = (dx / dist) * speed;
-                enemy.body.velocity.y = (dy / dist) * speed;
-            }
-        });
-    }
-
-    private updateAutoBullets(delta: number) {
-        this.autoBullets.getChildren().forEach(b => {
-            const bullet = b as any;
-            if (!bullet.active) return;
-            bullet.age = (bullet.age || 0) + delta;
-            if (bullet.age > (bullet.lifetime || 2500)) {
-                bullet.setActive(false);
-                bullet.setVisible(false);
-                if (bullet.body) bullet.body.enable = false;
-            }
-        });
-    }
-
-    private updateDiamondEffect(delta: number) {
-        if (!this.diamondEffectActive) return;
-
-        this.diamondEffectTimer -= delta;
-
-        const enemies = this.enemies.getActiveEnemies();
-        for (const enemy of enemies) {
-            enemy.die();
-        }
-
-        if (this.diamondEffectTimer <= 0) {
-            this.diamondEffectActive = false;
-            this.diamondEffectTimer = 0;
-        }
-    }
-
-    private updateOceanAnimations(time: number, delta: number) {
-        for (const particle of this.oceanParticles) {
-            particle.y += (particle as any).speedY;
-            particle.x += (particle as any).speedX + Math.sin(time * 0.002 + (particle as any).wobble) * 0.3;
-
-            if (particle.y < -10) {
-                particle.y = GAME.HEIGHT + 10;
-                particle.x = Phaser.Math.Between(0, GAME.WIDTH);
-            }
-            if (particle.x < -10) particle.x = GAME.WIDTH + 10;
-            if (particle.x > GAME.WIDTH + 10) particle.x = -10;
-        }
-
-        for (const ray of this.lightRays) {
-            const sway = Math.sin(time * 0.001 + (ray as any).phase) * 30;
-            const baseX = (ray as any).baseX + sway;
-            const alpha = (ray as any).baseAlpha + Math.sin(time * 0.0015 + (ray as any).phase) * 0.02;
-            this.drawLightRay(ray, baseX, Math.max(0, alpha));
-        }
-
-        this.bubbleTimer += delta;
-        if (this.bubbleTimer >= this.BUBBLE_INTERVAL) {
-            this.bubbleTimer = 0;
-            this.spawnBubble();
-        }
-    }
-
-    private spawnBubble() {
-        const x = Phaser.Math.Between(0, GAME.WIDTH);
-        const y = GAME.HEIGHT + 10;
-        const size = Phaser.Math.FloatBetween(2, 5);
-        const bubble = this.add.circle(x, y, size, 0xffffff, Phaser.Math.FloatBetween(0.1, 0.3));
-        bubble.setScrollFactor(0).setDepth(-94);
-
-        this.tweens.add({
-            targets: bubble,
-            y: -20,
-            x: x + Phaser.Math.Between(-50, 50),
-            alpha: 0,
-            duration: Phaser.Math.Between(3000, 5000),
-            ease: 'Sine.easeOut',
-            onComplete: () => bubble.destroy(),
-        });
-    }
-
-    private onProjectileHitEnemy(
-        projectileObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
-        enemyObj: Phaser.Types.Physics.Arcade.GameObjectWithBody
-    ) {
-        const proj = projectileObj as any;
-        const enemy = enemyObj as any;
-        if (!proj.active || !enemy.active) return;
-
-        enemy.takeDamage(proj.damage);
-        proj.onHit();
-        EventBus.emit(Events.SPECTACLE_HIT);
-    }
-
-    private onPlayerHitEnemy(
-        _playerObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
-        enemyObj: Phaser.Types.Physics.Arcade.GameObjectWithBody
-    ) {
-        const enemy = enemyObj as any;
-        if (!enemy.active) return;
-        this.player.takeDamage(enemy.damage);
-    }
-
-    private onAutoBulletHitEnemy(
-        bulletObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
-        enemyObj: Phaser.Types.Physics.Arcade.GameObjectWithBody
-    ) {
-        const bullet = bulletObj as any;
-        const enemy = enemyObj as any;
-        if (!bullet.active || !enemy.active) return;
-
-        enemy.takeDamage(bullet.damage || 15);
-
-        bullet.setActive(false);
-        bullet.setVisible(false);
-        bullet.body.enable = false;
-
-        EventBus.emit(Events.SPECTACLE_HIT);
-    }
-
-    private onTypingWordComplete(data: { target: Enemy; word: string; damage: number; streak: number; x: number; y: number }) {
-        if (data.target && data.target.active) {
-            data.target.takeDamage(data.damage);
-            this.weaponSystem.fireAll(data.target);
-        }
-
-        this.spawnTypingAttackEffect(data.x, data.y, data.damage);
-
-        if (data.streak >= TYPING.STREAK_MILESTONE_1) {
-            this.cameras.main.shake(100, 0.005 + data.streak * 0.001);
-        }
-
-        this.spawnSystem.getAdaptiveDifficulty().checkAndAdjust();
-    }
-
-    private onTypingStreak(data: { streak: number }) {
-        const labels: Record<number, string> = {
-            5: 'ON FIRE!',
-            10: 'UNSTOPPABLE!',
-            25: 'LEGENDARY!',
-        };
-
-        const label = labels[data.streak] || `${data.streak}x STREAK`;
-        const text = this.add.text(
-            this.cameras.main.scrollX + GAME.WIDTH / 2,
-            this.cameras.main.scrollY + GAME.HEIGHT * 0.3,
-            label,
-            {
-                fontSize: UI.FONT_SIZE_XL,
-                fontFamily: UI.FONT_FAMILY,
-                color: '#ffff00',
-                fontStyle: 'bold',
-                stroke: '#000000',
-                strokeThickness: 4,
-            }
-        ).setOrigin(0.5).setDepth(200);
-
-        this.tweens.add({
-            targets: text,
-            y: text.y - 40,
-            alpha: 0,
-            scale: 1.5,
-            duration: 1000,
-            ease: 'Quad.easeOut',
-            onComplete: () => text.destroy(),
-        });
-
-        this.cameras.main.shake(150, 0.015);
-    }
-
-    private spawnTypingAttackEffect(x: number, y: number, damage: number) {
-        const px = this.player.x;
-        const py = this.player.y;
-
-        const count = 6;
-        for (let i = 0; i < count; i++) {
-            const t = (i + 1) / (count + 1);
-            const bx = px + (x - px) * t;
-            const by = py + (y - py) * t;
-
-            const bullet = this.add.circle(bx, by, 4, PALETTE.WEAPON_ORB, 0.8);
-            bullet.setDepth(12);
-
-            this.tweens.add({
-                targets: bullet,
-                alpha: 0,
-                scale: 0.2,
-                duration: 300,
-                delay: i * 30,
-                onComplete: () => bullet.destroy(),
-            });
-        }
-
-        const impact = this.add.circle(x, y, 8, 0x44ffff, 0.9);
-        impact.setDepth(15);
-        this.tweens.add({
-            targets: impact,
-            scale: 3,
-            alpha: 0,
-            duration: 400,
-            ease: 'Quad.easeOut',
-            onComplete: () => impact.destroy(),
-        });
-
-        const dmgText = this.add.text(x, y - 20, `-${damage}`, {
-            fontSize: UI.FONT_SIZE_MD,
-            fontFamily: UI.FONT_FAMILY,
-            color: '#44ffff',
-            fontStyle: 'bold',
-            stroke: '#000000',
-            strokeThickness: 3,
-        }).setOrigin(0.5).setDepth(16);
-
-        this.tweens.add({
-            targets: dmgText,
-            y: dmgText.y - 30,
-            alpha: 0,
-            duration: 600,
-            ease: 'Quad.easeOut',
-            onComplete: () => dmgText.destroy(),
-        });
-    }
-
-    private onEnemyKilled(data: { x: number; y: number; xp: number; type: string }) {
-        this.xpGems.spawn(data.x, data.y, data.xp);
-
-        if (!this.diamondEffectActive) {
-            gameState.killsForItem++;
-            if (gameState.killsForItem >= 10) {
-                gameState.killsForItem = 0;
-                this.diamonds.spawn(data.x, data.y);
-            }
-        }
-    }
-
-    private onPlayerHitDiamond(
-        _playerObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
-        diamondObj: Phaser.Types.Physics.Arcade.GameObjectWithBody
-    ) {
-        const diamond = diamondObj as any;
-        if (!diamond.active) return;
-        diamond.collect();
-    }
-
-    private onDiamondCollected() {
-        this.diamondEffectActive = true;
-        this.diamondEffectTimer = this.DIAMOND_EFFECT_DURATION;
-
-        const enemies = this.enemies.getActiveEnemies();
-        for (const enemy of enemies) {
-            enemy.die();
-        }
-
-        this.cameras.main.flash(300, 255, 255, 0);
-        this.cameras.main.shake(200, 0.02);
-    }
-
-    private onLevelUp(data: { level: number }) {
-        this.scene.pause();
-        this.scene.launch('LevelUp', { level: data.level });
-    }
-
-    private onPlayerDied() {
-        gameState.gameOver = true;
-        gameState.bestScore = Math.max(gameState.bestScore, gameState.score);
-        this.time.delayedCall(500, () => {
-            this.scene.start('GameOver');
-        });
-    }
-
-    private cleanup() {
-        EventBus.off(Events.PLAYER_DIED, this.onPlayerDied, this);
-        EventBus.off(Events.PLAYER_LEVEL_UP, this.onLevelUp, this);
-        EventBus.off(Events.ENEMY_KILLED, this.onEnemyKilled, this);
-        EventBus.off(Events.TYPING_WORD_COMPLETE, this.onTypingWordComplete, this);
-        EventBus.off(Events.TYPING_STREAK, this.onTypingStreak, this);
-        EventBus.off(Events.DIAMOND_COLLECTED, this.onDiamondCollected, this);
-    }
+  }
+
+  private cleanup(): void {
+    this.input.removeAllListeners();
+    this.time.removeAllEvents();
+  }
 }
