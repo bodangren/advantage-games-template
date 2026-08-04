@@ -3,32 +3,37 @@ import {
   APK_RUNTIME_API_VERSION,
   type RuntimeCartridge,
 } from "@reading-advantage/advantage-play-kit";
-import { createStarterScene } from "./scene";
+import { createCrystalMazeScene } from "./scene";
 
-const starterAssetBindings = [
-  "runner.walk",
-  "enemy.sentinel",
-  "environment.forest",
-  "environment.clouds",
-  "environment.terrain",
-  "bonus.crystal-blue",
-  "bonus.coin",
+const crystalMazeAssetBindings = [
+  "player.hero-1",
+  "goblin.scout",
+  "orb.crystal-blue",
+  "bonus.chest",
+  "maze.wall-cavern",
+  "maze.floor-cavern",
+  "maze.gate",
   "feedback.hit",
-  "audio.feedback-hit",
+  "audio.orb-pickup",
+  "audio.wrong-orb",
+  "audio.power-up",
+  "audio.goblin-defeat",
+  "audio.sentence-complete",
+  "audio.ui-confirm",
 ] as const;
 
-/** Crystal Courier reference cartridge imported by the game lab and production hosts. */
+/** Crystal Maze cartridge — Week 3 fixed brief: Pac-Man-style sentence game. */
 export const myGameCartridge: RuntimeCartridge = {
   manifest: {
     id: "contestant.my-game",
-    title: "Crystal Courier",
+    title: "Crystal Maze",
     description:
-      "A reference vocabulary game built from the frozen competition palette.",
+      "Navigate the crystal cavern, collect English words in sentence order, dodge goblins, and unlock the Goblin Hunt power-up.",
     version: "0.1.0",
     runtimeApiVersion: APK_RUNTIME_API_VERSION,
-    inputMode: "vocabulary",
-    requiredAssetBindings: starterAssetBindings,
-    capabilities: ["keyboard", "pointer", "touch", "compact", "wide"],
+    inputMode: "sentence",
+    requiredAssetBindings: crystalMazeAssetBindings,
+    capabilities: ["keyboard", "pointer", "touch", "compact", "wide", "audio"],
   },
   createGameConfig(context) {
     return {
@@ -40,7 +45,7 @@ export const myGameCartridge: RuntimeCartridge = {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
-      scene: [createStarterScene(context)],
+      scene: [createCrystalMazeScene(context)],
     };
   },
 };
