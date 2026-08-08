@@ -5,7 +5,13 @@ import { mountCartridge, primaryChibiEdition, secondaryEpicEdition, type APKGame
 import { myGameCartridge } from "@reading-advantage/game-cartridges";
 import "./styles.css";
 
-const input = [{ term: "The brave knight protects the village", translation: "อัศวินผู้กล้าหาญปกป้องหมู่บ้าน" }, { term: "She collects crystals in the dark cave", translation: "เธอเก็บคริสตัลในถ้ำมืด" }, { term: "We journey through the ancient maze together", translation: "เราเดินทางผ่านเขาวงกตโบราณด้วยกัน" }];
+const input = [
+  { term: "The brave knight protects the village", translation: "อัศวินผู้กล้าหาญปกป้องหมู่บ้าน" },
+  { term: "She collects crystals in the dark cave", translation: "เธอเก็บคริสตัลในถ้ำมืด" },
+  { term: "We journey through the ancient maze together", translation: "เราเดินทางผ่านเขาวงกตโบราณด้วยกัน" },
+  { term: "A clever fox jumps over the lazy dog", translation: "จิ้งจอกเจ้าเล่ห์กระโดดข้ามหมาขี้เกียจ" },
+  { term: "They found treasure under the old tree", translation: "พวกเขาพบสมบัติใต้ต้นไม้เก่าแก่" },
+];
 function App() {
   const host = useRef<HTMLDivElement>(null); const handle = useRef<APKGameHandle | undefined>(undefined);
   const [wide, setWide] = useState(false); const [epic, setEpic] = useState(false); const [result, setResult] = useState<GameResults>(); const [event, setEvent] = useState("Mounting...");
