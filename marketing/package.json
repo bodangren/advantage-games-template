@@ -1,0 +1,9 @@
+{
+  "name": "advantage-games-marketing",
+  "private": true,
+  "type": "module",
+  "description": "Competition promo-video capture and assembly tooling. Not part of the submission workspace.",
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}
