@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.8.0",
-  "engines": { "node": ">=24 <25" },
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "dev": "vite --config apps/game-lab/vite.config.ts",
     "build": "vite build --config apps/game-lab/vite.config.ts",
@@ -27,6 +29,7 @@
     "@types/node": "latest",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "playwright": "^1.61.1",
     "typescript": "7.0.2",
     "vitest": "latest"
   }
