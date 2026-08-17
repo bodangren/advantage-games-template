@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite --config apps/game-lab/vite.config.ts",
     "build": "vite build --config apps/game-lab/vite.config.ts",
+    "preview": "vite preview --config apps/game-lab/vite.config.ts --host 127.0.0.1 --port 5173",
     "check-types": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "test": "vitest run",
