@@ -1,0 +1,2 @@
+# Preserve imported license receipts byte-for-byte and omit text diff checks.
+packages/advantage-play-kit/assets/standard/licenses/** binary

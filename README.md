@@ -1,8 +1,6 @@
-# Advantage Games LLM-First Competition
+# Advantage Game Authoring Template
 
-Build an educational Phaser 4 game with an LLM coding agent, then submit an import-ready cartridge for the Reading Advantage education apps.
-
-The starter now includes the organizer-owned **Crystal Courier** palette: a forest world, runner, three enemy options, layered environments, crystals, coins, feedback effect, and sound. It is enough to create a distinct game without spending competition time on asset search or license questions.
+Build a Phaser 4 educational game, validate it against a pinned Advantage Play Kit beta, and submit it as a Reading Advantage pull request.
 
 ## Start
 
@@ -14,12 +12,52 @@ pnpm install
 pnpm dev
 ```
 
-Open the repository in OpenCode, select your model, and ask:
+The game lab opens at `http://localhost:5173`.
 
-> What are the competition rules, palette restrictions, and what should I do first?
+Use Node.js 24 and pnpm 11.8.0. The repository pins both versions.
 
-Your agent will read `AGENTS.md` and guide you through the required concept discussion before coding.
+## Build A Game
 
-Only edit the cartridge at `packages/game-cartridges/src/cartridges/my-game/`, optional cartridge-owned assets, and `submission.json`. Use organizer assets only through `context.assets.resolve(role)`; do not copy their paths or URLs. Run `pnpm validate` before submitting.
+1. Read [the intern workflow](docs/INTERN_WORKFLOW.md).
+2. Replace the starter plan in `packages/game-cartridges/src/cartridges/my-game/blueprint.md`.
+3. Update the candidate manifest in `manifest.ts`.
+4. Write rule tests in `systems.test.ts`.
+5. Implement the rules in `systems.ts`.
+6. Build the Phaser mechanic in `scene.ts`.
+7. Run `pnpm validate`.
+8. Submit compact and wide screenshots with the pull request.
 
-Read [the rules](docs/COMPETITION_RULES.md), [the palette guide](docs/COMPETITION_PALETTE.md), [the game contract](docs/GAME_CONTRACT.md), and [the judging rubric](docs/JUDGING.md).
+Interns work only in the candidate cartridge directory and `cartridge-candidate.json`.
+
+## Pinned Beta
+
+This repository uses:
+
+- APK source commit `f6d1ed5a6e7d71caa60b5b822364294c405e181a`
+- Developer-kit API `2.0.0`
+- Runtime API `1.0.0`
+- Standard-pack release `2026.07.23`
+
+The adapter closes a current manifest-to-runtime gap for local authoring. A passing pull request is still a candidate.
+
+The exact upstream APK and game-contract source is preserved under `vendor/apk-beta-source`. The standalone adapter remains under `packages/advantage-play-kit/src`.
+
+Production acceptance requires monorepo import, asset review, host verification, and product-owner approval.
+
+## Commands
+
+```bash
+pnpm dev                 # Start the compact and wide game lab
+pnpm test                # Run deterministic and adapter tests
+pnpm check-types         # Check strict TypeScript
+pnpm validate:changes    # Check the intern-owned path boundary
+pnpm validate:candidate  # Check metadata and cartridge architecture
+pnpm validate:upstream   # Verify the pinned upstream APK source snapshot
+pnpm validate:assets     # Verify all 43,075 canonical asset files
+pnpm assets:search -- ui # Search the complete semantic asset catalog
+pnpm validate            # Run every required gate
+```
+
+The repository contains the full 43,075-file canonical asset library. Builds emit only each candidate's declared union.
+
+Read [the game contract](docs/GAME_CONTRACT.md), [asset rules](docs/ASSET_LIBRARY.md), and [responsive rules](docs/RESPONSIVE.md) before implementation.

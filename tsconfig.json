@@ -8,20 +8,25 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "paths": {
       "@reading-advantage/game-contracts": ["./packages/game-contracts/src/index.ts"],
       "@reading-advantage/advantage-play-kit": ["./packages/advantage-play-kit/src/index.ts"],
+      "@reading-advantage/advantage-play-kit/runtime": ["./packages/advantage-play-kit/src/runtime.ts"],
+      "@reading-advantage/advantage-play-kit/systems": ["./packages/advantage-play-kit/src/systems.ts"],
+      "@reading-advantage/advantage-play-kit/responsive": ["./packages/advantage-play-kit/src/responsive.ts"],
+      "@reading-advantage/advantage-play-kit/scaffolding": ["./packages/advantage-play-kit/src/scaffolding.ts"],
       "@reading-advantage/game-cartridges": ["./packages/game-cartridges/src/index.ts"]
     }
   },
   "include": [
-    "apps/game-lab/src/**/*.ts",
-    "apps/game-lab/src/**/*.tsx",
-    "apps/game-lab/vite.config.ts",
-    "packages/game-contracts/src/index.ts",
-    "packages/advantage-play-kit/src/index.ts",
-    "packages/game-cartridges/src/index.ts",
-    "packages/game-cartridges/src/cartridges/my-game/**/*.ts"
+    "apps/game-lab/**/*.ts",
+    "apps/game-lab/**/*.tsx",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "tests/**/*.ts",
+    "playwright.config.ts",
+    "vitest.config.ts"
   ]
 }

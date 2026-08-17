@@ -1,107 +1,100 @@
-# AGENTS.md - Advantage Games Competition
+# AGENTS.md - Advantage Game Authoring Template
 
-This repository is an LLM-first competition workspace. Build one import-ready Phaser 4 educational game cartridge.
+This repository creates real APK game pull requests for Reading Advantage.
 
-## First Turn Protocol
+Every game remains an import candidate until the monorepo accepts its assets, host behavior, and product review.
 
-When the contestant asks for the rules or what to do first:
+## First Turn
 
-1. Read this file and `docs/CRYSTAL_MAZE.md`, `docs/COMPETITION_RULES.md`, `docs/COMPETITION_PALETTE.md`, `docs/GAME_CONTRACT.md`, and `docs/JUDGING.md`.
-2. Explain the mission, the 100-point scoring rubric, the fixed Week 3 brief, frozen palette, immutable contracts, editable paths, and `pnpm validate`.
-3. Read `docs/CRYSTAL_MAZE.md` (the fixed brief) and plan the maze + systems.
-4. Implement the plan in the editable paths.
-5. Run `pnpm validate`.
-6. Capture compact and wide screenshots for the pull request.
+1. Read `docs/INTERN_WORKFLOW.md`, `docs/GAME_CONTRACT.md`, `docs/ASSET_LIBRARY.md`, and `docs/RESPONSIVE.md`.
+2. Discuss the learning goal and mechanic before editing code.
+3. Update `blueprint.md` and `manifest.ts`.
+4. Write deterministic tests for the educational rules.
+5. Implement the Phaser scene.
+6. Run `pnpm validate`.
+7. Capture compact and wide screenshots for the pull request.
 
-The concept is fixed — do not ask for a game concept or pitch a different genre.
+## Intern-Owned Paths
 
-## Editable Paths
-
-Contestants and agents may edit only:
+Interns may edit:
 
 - `packages/game-cartridges/src/cartridges/my-game/**`
-- `apps/game-lab/public/assets/cartridges/my-game/**`
-- `submission.json`
+- `cartridge-candidate.json`
 
-Everything else is protected competition infrastructure. Never weaken or modify contracts, runtime code, the host, palette resolver, validators, tests, CI, or lockfiles to make a submission pass.
+Select semantic assets in `assets.json`. Do not add physical assets to the cartridge.
 
-## Production Shape
+The runtime adapter, game lab, validators, selected development assets, lockfile, and CI are maintainer-owned.
 
-The game must remain directly copyable to:
+`vendor/apk-beta-source` is the exact read-only upstream source snapshot. Never edit it to make a candidate pass.
 
-`packages/game-cartridges/src/cartridges/<slug>/`
+## Candidate Boundary
 
-No application-specific rewrite may be needed after submission. Keep these responsibilities:
+A passing pull request proves compatibility with this pinned beta snapshot only.
 
-- `blueprint.md`: mechanic, learning loop, controls, outcomes.
-- `definition.ts`: manifest and `RuntimeCartridge` entry point.
-- `scene.ts`: Phaser-native rendering and interaction.
+It does not create a production catalog entry. It does not approve assets, deployment, host persistence, or product release.
+
+Pinned contracts:
+
+- Monorepo source: `f6d1ed5a6e7d71caa60b5b822364294c405e181a`
+- Developer-kit API: `2.0.0`
+- Runtime API: `1.0.0`
+- Standard-pack release: `2026.07.23`
+
+## Cartridge Structure
+
+- `blueprint.md`: learning goal, mechanic, controls, outcomes, and responsive plan.
+- `assets.json`: selected semantic keys from the complete standard library.
+- `manifest.ts`: candidate identity, capabilities, attribution, and release pins.
 - `systems.ts`: deterministic educational and scoring logic.
+- `systems.test.ts`: unit tests for rules and edge cases.
+- `scene.ts`: Phaser rendering and interaction.
+- `definition.ts`: host-owned manifest adapter and runtime entry point.
 - `index.ts`: public cartridge export.
-- `*.test.ts`: deterministic behavior tests.
 
-## Immutable Contracts
+## Stable Contracts
 
-Input is an array of `{ term: string; translation: string }`. `inputMode` is `vocabulary` or `sentence`.
+Input is a vocabulary or sentence array of `{ term: string; translation: string }`.
 
-The manifest fields are exactly `id`, `title`, `description`, `version`, `runtimeApiVersion`, `inputMode`, `requiredAssetBindings`, and `capabilities`. Runtime API is `1.0.0`.
-
-Completion must call `context.complete()` exactly once with:
+Call `context.complete()` once with:
 
 ```ts
 {
-  accuracy: number;       // 0..1
-  xp: number;             // non-negative integer, display only
-  score: number;          // non-negative integer
-  correctAnswers: number; // non-negative integer
-  totalAttempts: number;  // non-negative integer
+  accuracy: number;
+  xp: number;
+  score: number;
+  correctAnswers: number;
+  totalAttempts: number;
 }
 ```
 
-Identity, persistence, tenancy, and authoritative XP belong to the education app host, never the cartridge.
+The host owns identity, tenancy, authoritative XP, persistence, and navigation.
 
-## Frozen Competition Palette
+## Engineering Rules
 
-Use only the Week 3 Crystal Maze roles in `docs/COMPETITION_PALETTE.md`. Obtain every descriptor through `context.assets.resolve(role)`, then use its URL and frame metadata with Phaser. Never hard-code asset paths, URLs, source filenames, frame dimensions, or remote art links.
-
-Declare the exact stable roles your game uses in `manifest.requiredAssetBindings`. The organizer requires the visible credits **Pixel art assets by ElvGames** and **Sound effects by Universal Sound Effects**. The Crystal Maze brief is fixed; within it teams vary maze layout, hero/goblin/theme picks, orb placement, and speeds.
-
-## Mandatory Engineering Rules
-
-- Use Phaser 4 and canvas-first gameplay. Host controls may use DOM outside the canvas.
-- One game source must intentionally support compact `390x844` and wide `1440x900` composition.
-- Provide touch/pointer and keyboard-equivalent controls.
-- Keep Thai and English prompts complete, legible, wrapped, and untruncated.
-- Use edition semantics; do not branch gameplay by product or hard-code production asset paths.
-- Use supplied lifecycle, input, palette, diagnostics, and completion APIs instead of recreating host infrastructure.
-- Tear down scenes, timers, listeners, audio, and Phaser instances.
-- Write tests before or alongside behavior. All exported functions, types, and interfaces need useful JSDoc.
+- Use Phaser 4 for canvas gameplay.
+- Support compact `390x844` and wide `1440x900` compositions from one source.
+- Support pointer or touch and an equivalent keyboard path.
+- Keep Thai and English text complete and readable.
+- Use `context.inputController` for normalized keyboard input.
+- Use host edition APIs for semantic assets.
+- Never write physical asset paths or remote URLs in cartridge code.
+- Keep game rules outside Phaser objects.
+- Tear down listeners, timers, audio, and Phaser objects.
+- Add useful JSDoc to every exported function, type, and interface.
 - Never report completion while a required check fails.
 
-Cartridge code must not import Next.js, React, auth, databases, app aliases, Konva, Three.js/R3F, provider SDKs, or files under `apps/`.
+Cartridge code must not import Next.js, React, auth, databases, app aliases, Konva, Three.js, provider SDKs, or files under `apps/`.
 
 ## Commands
 
 ```bash
-pnpm dev                # game lab at http://localhost:5173 — buttons toggle 390x844/1440x900 and both editions
+pnpm install
+pnpm dev
 pnpm test
 pnpm check-types
-pnpm validate:submission
 pnpm validate
 ```
 
-## Resolver Quickstart
+## Measure
 
-```ts
-// scene.ts preload(): resolve roles, then load with descriptor-owned metadata
-const hero = context.assets.resolve("player.hero-1");
-this.load.spritesheet("hero", hero.url, { frameWidth: hero.frame!.width, frameHeight: hero.frame!.height });
-const pickup = context.assets.resolve("audio.orb-pickup");
-this.load.audio("pickup", pickup.url);
-```
-
-Declare every resolved role in `manifest.requiredAssetBindings`. Never write a URL, path, or frame number yourself.
-
-## Definition Of Done
-
-The learning loop is fun and correct; both viewport profiles are composed intentionally; touch and keyboard work; both development editions render; only selected-union assets are resolved through the host; required credit is visible; valid results emit once; restart/unmount leaks nothing; tests and `pnpm validate` pass; and the three-minute demo works at both required sizes.
+Maintainer changes use the Measure track in `measure/tracks.md`.

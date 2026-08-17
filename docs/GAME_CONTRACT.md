@@ -1,18 +1,56 @@
 # Game Contract
 
-The host passes a vocabulary or sentence array containing `{ term, translation }` records. A cartridge exports a `RuntimeCartridge` with the eight required manifest fields and `createGameConfig(context)`.
+## Input
 
-Use `context.input`, `context.edition`, `context.seed`, `context.assets`, `context.diagnostic`, and `context.complete`. Completion accepts exactly `accuracy`, `xp`, `score`, `correctAnswers`, and `totalAttempts`. Do not send user IDs, school IDs, timestamps, or persistence data.
+The host supplies a vocabulary or sentence array.
 
-## Assets
+```ts
+type LearningItem = {
+  term: string;
+  translation: string;
+};
+```
 
-The runtime manifest API remains `1.0.0`. The competition host additionally supplies `context.assets.resolve(role)` as an additive developer-kit service for the frozen Crystal Courier palette.
+Use the manifest `inputMode` to select vocabulary or sentence semantics.
 
-- Resolve every approved asset through the host resolver.
-- Use the descriptor's URL and sprite metadata; do not duplicate them in a cartridge.
-- List the exact stable roles your cartridge uses in `manifest.requiredAssetBindings`.
-- Never import from `apps/`, hard-code `/assets/competition/`, use a source filename, or fetch external art.
+The shared nonempty-content system rejects empty arrays and blank strings before gameplay starts.
 
-See [COMPETITION_PALETTE.md](COMPETITION_PALETTE.md) for the complete role list and the required visible credit.
+## Runtime Context
 
-The cartridge folder must be directly importable into the same path in the production monorepo.
+The current runtime supplies:
+
+- `input`: validated learning items
+- `edition`: host-owned semantic asset bindings
+- `inputController`: normalized keyboard and pointer state
+- `composition`: optional compact or wide geometry
+- `seed`: optional deterministic session seed
+- `diagnostic`: structured runtime reporting
+- `complete`: fire-once result boundary
+
+The retired competition-only `context.assets` and `edition.colors` APIs are not available.
+
+## Results
+
+Emit exactly these fields:
+
+```ts
+{
+  accuracy: number;       // 0 through 1
+  xp: number;             // nonnegative display value
+  score: number;          // nonnegative integer
+  correctAnswers: number; // nonnegative integer
+  totalAttempts: number;  // nonnegative integer
+}
+```
+
+The runtime validates the object and accepts it once per session.
+
+The host owns authoritative XP, identity, tenancy, persistence, idempotency, and navigation.
+
+## Manifest Adapter
+
+`manifest.ts` uses the developer-kit `2.0.0` candidate manifest.
+
+The local `adaptCandidateManifestToRuntime()` function creates the runtime `1.0.0` eight-field manifest. The production monorepo does not yet publish this bridge.
+
+This adapter is a beta boundary. Production import review must replace or accept it.

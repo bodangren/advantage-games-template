@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "advantage-game-candidate.v1",
+  "status": "candidate",
+  "cartridgeId": "my-game",
+  "cartridgePath": "packages/game-cartridges/src/cartridges/my-game",
+  "inputMode": "vocabulary",
+  "apkSourceCommit": "f6d1ed5a6e7d71caa60b5b822364294c405e181a",
+  "developerKitApiVersion": "2.0.0",
+  "runtimeApiVersion": "1.0.0",
+  "standardPackRelease": "2026.07.23"
+}

@@ -5,3 +5,5 @@ coverage
 *.log
 .worktrees/
 marketing/output/
+playwright-report/
+test-results/

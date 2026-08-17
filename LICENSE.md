@@ -1,5 +1,9 @@
-# All Rights Reserved
+# Authorized Contribution Use
 
-Copyright (c) 2026 Reading Advantage.
+Copyright (c) 2026 Reading Advantage. All rights reserved.
 
-No permission to copy, redistribute, sublicense, or use this repository outside the announced competition is granted. Competition submission and production-use terms must be provided by the organizer before accepting contributions.
+Reading Advantage interns and authorized contributors may use this repository to create pull requests for Reading Advantage products.
+
+This permission does not allow redistribution, sublicensing, resale, or use in another product.
+
+Bundled development assets have separate restrictions in `ASSET-LICENSES.json`. Do not copy them outside this repository.

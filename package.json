@@ -12,25 +12,32 @@
     "build": "vite build --config apps/game-lab/vite.config.ts",
     "check-types": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "vitest run packages/advantage-play-kit/src/competition-palette.test.ts packages/game-cartridges/src/cartridges/my-game/systems.test.ts",
-    "validate:submission": "node scripts/validate-submission.mjs",
-    "validate:import": "node scripts/validate-import.mjs",
-    "validate": "pnpm validate:submission && pnpm check-types && pnpm test && pnpm build && pnpm validate:import"
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "assets:search": "node scripts/search-assets.mjs",
+    "validate:changes": "node scripts/validate-candidate-changes.mjs",
+    "validate:candidate": "node scripts/validate-candidate.mjs",
+    "validate:assets": "node scripts/validate-development-assets.mjs",
+    "validate:upstream": "node scripts/validate-upstream-snapshot.mjs",
+    "validate:import": "vitest run packages/game-cartridges/src/import-compatibility.test.ts",
+    "validate": "pnpm validate:changes && pnpm validate:candidate && pnpm validate:upstream && pnpm validate:assets && pnpm check-types && pnpm test && pnpm build && pnpm validate:import && pnpm test:e2e"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
+    "@vitejs/plugin-react": "6.0.5",
     "phaser": "4.2.1",
     "react": "19.2.7",
     "react-dom": "19.2.7",
-    "vite": "latest",
-    "zod": "latest"
+    "vite": "8.2.0",
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "@types/node": "latest",
+    "@types/node": "26.1.2",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "playwright": "^1.61.1",
+    "ajv": "8.17.1",
+    "jsdom": "27.4.0",
+    "playwright": "1.62.1",
     "typescript": "7.0.2",
-    "vitest": "latest"
+    "vitest": "4.1.10"
   }
 }

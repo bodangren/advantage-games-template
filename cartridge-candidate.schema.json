@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "cartridgeId",
+    "cartridgePath",
+    "inputMode",
+    "apkSourceCommit",
+    "developerKitApiVersion",
+    "runtimeApiVersion",
+    "standardPackRelease"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "advantage-game-candidate.v1" },
+    "status": { "const": "candidate" },
+    "cartridgeId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "cartridgePath": { "const": "packages/game-cartridges/src/cartridges/my-game" },
+    "inputMode": { "enum": ["vocabulary", "sentence"] },
+    "apkSourceCommit": { "const": "f6d1ed5a6e7d71caa60b5b822364294c405e181a" },
+    "developerKitApiVersion": { "const": "2.0.0" },
+    "runtimeApiVersion": { "const": "1.0.0" },
+    "standardPackRelease": { "const": "2026.07.23" }
+  }
+}

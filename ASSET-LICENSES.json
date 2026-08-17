@@ -1,68 +1,26 @@
 {
-  "version": 1,
-  "assets": [
-    {
-      "scope": "Crystal Courier organizer competition palette",
-      "release": "2026.07.23",
-      "catalogDigest": "ac801baee31d3b410050d03f8e9cb672940e3bf24a917df7233a7785f90a8087",
-      "sourceReceiptDigest": "93562cc3070a4907d06d6196a2c5d917a07c4b487cf4be031805d60fdc75eea9",
-      "requiredCredit": "Pixel art assets by ElvGames",
-      "files": [
-        "runner-idle.png",
-        "runner-walk.png",
-        "sentinel-idle.png",
-        "scout-walk.png",
-        "brute-idle.png",
-        "forest.png",
-        "clouds.png",
-        "terrain.png",
-        "crystal-blue.png",
-        "crystal-green.png",
-        "crystal-yellow.png",
-        "coin.png",
-        "hit.png",
-        "feedback-hit.ogg"
-      ]
-    },
-    {
-      "scope": "Crystal Maze organizer competition palette (Week 3 fixed brief)",
-      "release": "2026.08.04",
-      "catalogDigest": "535866f258dc9238b48839f9ba7c264417ef104ec586b0c2dfe056a5975fdc33",
-      "sourceReceiptDigest": "c06bad4bf118bffac14b4469fc54b0ba1c84dda8c8b43a143aaf6caf0f0caf2c",
-      "requiredCredit": "Pixel art assets by ElvGames; Sound effects by Universal Sound Effects",
-      "files": [
-        "audio-goblin-defeat.ogg",
-        "audio-orb-pickup.ogg",
-        "audio-power-up.ogg",
-        "audio-sentence-complete.ogg",
-        "audio-ui-confirm.ogg",
-        "audio-wrong-orb.ogg",
-        "chest.png",
-        "coin.png",
-        "crystal-blue.png",
-        "crystal-green.png",
-        "crystal-yellow.png",
-        "floor-cavern.png",
-        "floor-crypt.png",
-        "floor-dungeon.png",
-        "gate.png",
-        "goblin-brute.png",
-        "goblin-scout.png",
-        "goblin-stalker.png",
-        "goblin-warden.png",
-        "hero-1.png",
-        "hero-2.png",
-        "hero-3.png",
-        "hero-4.png",
-        "hero-5.png",
-        "hero-6.png",
-        "hit.png",
-        "torch.png",
-        "wall-cavern.png",
-        "wall-crypt.png",
-        "wall-dungeon.png"
-      ]
-    }
+  "version": 3,
+  "scope": "Complete canonical APK standard asset library",
+  "canonicalRoot": "packages/advantage-play-kit/assets/standard",
+  "standardPackRelease": "2026.07.23",
+  "catalogDigest": "ac801baee31d3b410050d03f8e9cb672940e3bf24a917df7233a7785f90a8087",
+  "catalogArtifactSha256": "ef432a798a78585df3416d60aca30fe11a2d1d8b833e0d65ceb7fac5c8b19932",
+  "sourceReceiptDigest": "93562cc3070a4907d06d6196a2c5d917a07c4b487cf4be031805d60fdc75eea9",
+  "assetCount": 43075,
+  "requiredCredit": "Pixel art assets by ElvGames",
+  "publicDistributionPermission": "confirmed-by-repository-owner-2026-08-17",
+  "licenseFile": "packages/advantage-play-kit/assets/standard/LICENSE-ELVGAMES.txt",
+  "sourceRecords": [
+    "packages/advantage-play-kit/assets/standard/SOURCES.md",
+    "packages/advantage-play-kit/assets/standard/IMPORT-RECEIPT.tsv",
+    "packages/advantage-play-kit/assets/standard/CURATED-RECEIPT.tsv",
+    "packages/advantage-play-kit/assets/standard/LICENSE-RECEIPT.tsv"
   ],
-  "note": "This frozen selected union is supplied by organizers for competition use. Submitted cartridges remain candidate cartridges pending post-event host, attribution, and owner review."
+  "rules": [
+    "Cartridges declare semantic keys only",
+    "Development can browse the complete canonical library",
+    "Builds emit only the declared selected union",
+    "Required attribution must remain visible",
+    "Production mapping and host acceptance remain required"
+  ]
 }

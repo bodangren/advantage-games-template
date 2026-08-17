@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "sourceRepository": "bodangren/reading-advantage-monorepo",
+  "sourceCommit": "f6d1ed5a6e7d71caa60b5b822364294c405e181a",
+  "developerKitApiVersion": "2.0.0",
+  "runtimeApiVersion": "1.0.0",
+  "standardPackRelease": "2026.07.23",
+  "sourceFileCount": 147,
+  "sourceTreeSha256": "f15831b1c54e5a13478d074cfb9d1075aa85b7abf82af4488381ca4fd3437b49",
+  "usage": "Read-only upstream reference for the standalone beta adapter"
+}

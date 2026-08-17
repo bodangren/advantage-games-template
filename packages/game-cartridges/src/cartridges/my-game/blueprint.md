@@ -1,20 +1,37 @@
-# Crystal Maze Blueprint
+# Game Blueprint
 
-Crystal Maze is the fixed Week 3 brief: a Pac-Man-style sentence game. The Thai sentence is displayed; the English sentence's words are word orbs in the maze; the player collects them in sentence order. Start from this blueprint; adjust details, not the brief.
+Replace this starter blueprint before implementation.
 
-- Player verb: steer the hero through the maze with touch/pointer or WASD/arrows.
-- Learning loop: read the Thai sentence, then collect its English words in sentence order; each correct orb advances the sentence.
-- Repeated action: collect the next glowing word orb, avoid goblins, complete the sentence, open the chest, start the next sentence.
-- Order rule: only the next correct word glows; a wrong orb costs a life or stuns (audio.wrong-orb).
-- Correct consequence: orb collected (audio.orb-pickup), score advances; a sentence completed in correct order grants the timed Goblin Hunt power-up (audio.power-up).
-- Power-up: while Goblin Hunt is active, goblins flee and can be defeated for bonus score (feedback.hit + audio.goblin-defeat); then the next sentence spawns (audio.sentence-complete).
-- Incorrect consequence: wrong orb, or goblin contact without a power-up, costs a life.
-- Difficulty ramp: sentences grow from 3 to 7 words.
-- Win condition: complete all supplied sentences.
-- Lose condition: lives exhausted.
-- Controls: touch/pointer steering; keyboard WASD or arrow keys; both work at 390×844 portrait and 1440×900 landscape.
-- Assets: resolve the Week 3 roles through `context.assets.resolve(...)`; declare them in `manifest.requiredAssetBindings`; never copy paths or URLs.
-- Credits: show **Pixel art assets by ElvGames** and **Sound effects by Universal Sound Effects**.
-- Completion: call `context.complete()` exactly once with `accuracy`, `xp`, `score`, `correctAnswers`, `totalAttempts`.
+## Learning Goal
 
-Teams may vary maze layout, hero/goblin/theme picks, orb placement, and speeds within the brief. Preserve the learning loop, contract, responsive layouts, and palette rules in [COMPETITION_PALETTE.md](../../../../../docs/COMPETITION_PALETTE.md).
+- Input mode: vocabulary
+- Learning action: choose the matching translation
+- Required language behavior: show every term and translation without truncation
+
+## Mechanic
+
+- Player verb: select one of two answers
+- Repeated action: read, choose, receive feedback, continue
+- Correct consequence: advance and add score
+- Incorrect consequence: advance without score
+- Win condition: answer every supplied item
+- Lose condition: none in the starter
+
+## Controls
+
+- Pointer or touch: select an answer
+- Keyboard: use `1` or `2`
+
+## Responsive Plan
+
+- Compact `390x844`: stack the prompt, actor, and answers vertically.
+- Wide `1440x900`: place answers side by side.
+- Preserve the current question and score during recomposition.
+
+## Asset Requirements
+
+Declare semantic keys in `manifest.ts`. Do not add physical paths or remote URLs.
+
+## Results
+
+Call the supplied completion boundary once with `accuracy`, `xp`, `score`, `correctAnswers`, and `totalAttempts`.

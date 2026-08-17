@@ -1,0 +1,13 @@
+{
+  "track_id": "production_intern_game_template_20260817",
+  "type": "feature",
+  "status": "completed",
+  "created_at": "2026-08-17",
+  "completed_at": "2026-08-17",
+  "apk_source_commit": "f6d1ed5a6e7d71caa60b5b822364294c405e181a",
+  "developer_kit_api_version": "2.0.0",
+  "runtime_api_version": "1.0.0",
+  "standard_pack_release": "2026.07.23",
+  "full_asset_library": true,
+  "public_asset_distribution_permission": "confirmed_by_owner_2026_08_17"
+}

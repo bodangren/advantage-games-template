@@ -1,3 +1,9 @@
 # Workflow
 
-Discuss the mechanic, write deterministic tests, implement the smallest correct cartridge, run `pnpm validate`, and verify both required viewports and editions.
+Discuss the learning goal and mechanic first.
+
+Write deterministic rule tests before the Phaser scene.
+
+Run `pnpm validate`, then verify compact and wide layouts with pointer and keyboard input.
+
+Submit the game as an import candidate. Do not claim production acceptance from template checks.
